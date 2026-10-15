@@ -1,5 +1,5 @@
-// TimeOn - WFH Team Status & Attendance Pulse Logic (v2.2.2)
-const TIMEON_APP_VERSION = '2.2.2';
+// TimeOn - WFH Team Status & Attendance Pulse Logic (v2.2.3)
+const TIMEON_APP_VERSION = '2.2.3';
 console.log(`%c[TimeOn] Active Version: v${TIMEON_APP_VERSION}`, 'color: #0284c7; font-weight: bold; font-size: 13px;');
 
 // Cache safety: verify version and log
@@ -2106,25 +2106,37 @@ function showConfirmToast(message, onConfirm, options = {}) {
   if (!container) return;
 
   const toast = document.createElement('div');
-  toast.className = 'p-4 rounded-2xl shadow-2xl bg-white border border-sky-200 text-slate-800 text-xs font-semibold pointer-events-auto flex flex-col gap-3 min-w-[290px] max-w-[360px] transform translate-y-2 opacity-0 transition-all duration-200 ring-4 ring-sky-500/10';
+  const type = options.type || (options.isDanger ? 'danger' : 'info');
+
+  let cardStyle = 'bg-white border-sky-200 ring-sky-500/10';
+  let iconBoxStyle = 'bg-sky-50 text-sky-600 border border-sky-200';
+  let confirmBtnClass = 'bg-sky-600 hover:bg-sky-500 text-white';
+
+  if (type === 'danger' || options.isDanger) {
+    cardStyle = 'bg-white border-rose-200 ring-rose-500/20';
+    iconBoxStyle = 'bg-rose-50 text-rose-600 border border-rose-200';
+    confirmBtnClass = 'bg-rose-600 hover:bg-rose-500 text-white';
+  } else if (type === 'warning') {
+    cardStyle = 'bg-white border-amber-300 ring-amber-500/20 shadow-amber-500/10';
+    iconBoxStyle = 'bg-amber-50 text-amber-700 border border-amber-200';
+    confirmBtnClass = 'bg-amber-600 hover:bg-amber-500 text-white';
+  }
+
+  toast.className = `p-4 rounded-2xl shadow-2xl border text-slate-800 text-xs pointer-events-auto flex flex-col gap-3 min-w-[300px] max-w-[400px] transform translate-y-2 opacity-0 transition-all duration-200 ring-4 ${cardStyle}`;
 
   const confirmText = options.confirmText || 'ยืนยัน';
   const cancelText = options.cancelText || 'ยกเลิก';
-  const isDanger = options.isDanger !== false;
-  const confirmBtnClass = isDanger
-    ? 'px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-xs transition'
-    : 'px-3.5 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs shadow-xs transition';
 
   toast.innerHTML = `
-    <div class="flex items-start gap-2.5">
-      <div class="p-2 rounded-xl ${isDanger ? 'bg-rose-50 text-rose-600' : 'bg-sky-50 text-sky-600'} shrink-0">
-        <i data-lucide="${options.icon || 'alert-circle'}" class="w-4 h-4"></i>
+    <div class="flex items-start gap-3">
+      <div class="p-2.5 rounded-xl ${iconBoxStyle} shrink-0">
+        <i data-lucide="${options.icon || 'alert-circle'}" class="w-5 h-5"></i>
       </div>
-      <div class="flex-1 text-slate-800 leading-snug font-bold text-xs pt-0.5">${message}</div>
+      <div class="flex-1 text-slate-800 leading-snug font-medium text-xs pt-0.5">${message}</div>
     </div>
-    <div class="flex items-center justify-end gap-2 pt-1 border-t border-slate-100">
-      <button type="button" class="btn-cancel px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs transition">${cancelText}</button>
-      <button type="button" class="btn-confirm ${confirmBtnClass}">${confirmText}</button>
+    <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+      <button type="button" class="btn-cancel px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs transition cursor-pointer">${cancelText}</button>
+      <button type="button" class="btn-confirm px-3.5 py-1.5 rounded-xl ${confirmBtnClass} font-bold text-xs shadow-xs transition flex items-center gap-1 cursor-pointer">${confirmText}</button>
     </div>
   `;
 
@@ -2140,7 +2152,7 @@ function showConfirmToast(message, onConfirm, options = {}) {
     setTimeout(() => toast.remove(), 250);
   };
 
-  const autoDismissTimer = setTimeout(dismiss, 15000);
+  const autoDismissTimer = setTimeout(dismiss, 30000);
 
   toast.querySelector('.btn-cancel').onclick = () => {
     clearTimeout(autoDismissTimer);
@@ -3268,53 +3280,67 @@ async function adminResetEmployeePin() {
     return;
   }
 
-  const confirmMsg = `ยืนยันการรีเซ็ตรหัส PIN ของ "${u.name}" (${u.empCode || u.id}) ใช่หรือไม่?\n\nเมื่อรีเซ็ตแล้ว รหัส PIN เดิมจะถูกล้าง และพนักงานจะต้องตั้งรหัส PIN 4 หลักใหม่เมื่อเข้าสู่ระบบครั้งต่อไป`;
-  if (!confirm(confirmMsg)) return;
+  const confirmMsg = `
+    <div>
+      <div class="font-bold text-slate-800 text-sm mb-1">ยืนยันการรีเซ็ตรหัส PIN?</div>
+      <div>ต้องการรีเซ็ตรหัส PIN ของ <b>"${u.name}"</b> (${u.empCode || u.id}) ใช่หรือไม่?</div>
+      <div class="text-[11px] text-slate-500 mt-1 font-normal leading-relaxed">
+        เมื่อรีเซ็ตแล้ว รหัส PIN เดิมจะถูกล้าง และพนักงานจะต้องตั้งรหัส PIN 4 หลักใหม่เมื่อเข้าสู่ระบบครั้งต่อไป
+      </div>
+    </div>
+  `;
 
-  const btn = document.getElementById('btnAdminResetPin');
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i><span>กำลังรีเซ็ต...</span>`;
-    if (window.lucide) window.lucide.createIcons();
-  }
-
-  try {
-    const res = await fetch('/api/admin/reset-pin', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        adminId: me.id || me.empCode,
-        userId: u.id
-      })
-    });
-
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      showToast(data.error || 'เกิดข้อผิดพลาดในการรีเซ็ตรหัส PIN', 'error');
-      return;
-    }
-
-    u.hasPin = false;
-    clearUserPinVerification(u.id);
-
-    const pinStatusEl = document.getElementById('adminEditPinStatus');
-    if (pinStatusEl) {
-      pinStatusEl.innerHTML = `<span class="inline-flex items-center gap-1 text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-md">⚪ ยังไม่ได้ตั้งรหัส PIN (จะให้ตั้งเมื่อเข้าใช้งาน)</span>`;
-    }
-    if (btn) btn.classList.add('hidden');
-
-    if (currentTab === 'employees') renderEmployeesAdminView();
-    showToast(`รีเซ็ตรหัส PIN ของ ${u.name} เรียบร้อยแล้ว (สามารถตั้ง PIN ใหม่ได้ทันที) 🔄`, 'success');
-  } catch (err) {
-    console.error('adminResetEmployeePin error:', err);
-    showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
-  } finally {
+  showConfirmToast(confirmMsg, async () => {
+    const btn = document.getElementById('btnAdminResetPin');
     if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = `<i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i><span>รีเซ็ตรหัส PIN</span>`;
+      btn.disabled = true;
+      btn.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i><span>กำลังรีเซ็ต...</span>`;
       if (window.lucide) window.lucide.createIcons();
     }
-  }
+
+    try {
+      const res = await fetch('/api/admin/reset-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          adminId: me.id || me.empCode,
+          userId: u.id
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        showToast(data.error || 'เกิดข้อผิดพลาดในการรีเซ็ตรหัส PIN', 'error');
+        return;
+      }
+
+      u.hasPin = false;
+      clearUserPinVerification(u.id);
+
+      const pinStatusEl = document.getElementById('adminEditPinStatus');
+      if (pinStatusEl) {
+        pinStatusEl.innerHTML = `<span class="inline-flex items-center gap-1 text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-md">⚪ ยังไม่ได้ตั้งรหัส PIN (จะให้ตั้งเมื่อเข้าใช้งาน)</span>`;
+      }
+      if (btn) btn.classList.add('hidden');
+
+      if (currentTab === 'employees') renderEmployeesAdminView();
+      showToast(`รีเซ็ตรหัส PIN ของ ${u.name} เรียบร้อยแล้ว (สามารถตั้ง PIN ใหม่ได้ทันที) 🔄`, 'success');
+    } catch (err) {
+      console.error('adminResetEmployeePin error:', err);
+      showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i><span>รีเซ็ตรหัส PIN</span>`;
+        if (window.lucide) window.lucide.createIcons();
+      }
+    }
+  }, {
+    confirmText: 'รีเซ็ต PIN',
+    cancelText: 'ยกเลิก',
+    icon: 'key-round',
+    type: 'warning'
+  });
 }
 
 async function adminQuickResetPin(userId) {
@@ -3330,34 +3356,48 @@ async function adminQuickResetPin(userId) {
     return;
   }
 
-  const confirmMsg = `ยืนยันการรีเซ็ตรหัส PIN ของ "${u.name}" (${u.empCode || u.id}) ใช่หรือไม่?\n\nเมื่อรีเซ็ตแล้ว รหัส PIN เดิมจะถูกล้าง และพนักงานจะต้องตั้งรหัส PIN 4 หลักใหม่เมื่อเข้าสู่ระบบครั้งต่อไป`;
-  if (!confirm(confirmMsg)) return;
+  const confirmMsg = `
+    <div>
+      <div class="font-bold text-slate-800 text-sm mb-1">ยืนยันการรีเซ็ตรหัส PIN?</div>
+      <div>ต้องการรีเซ็ตรหัส PIN ของ <b>"${u.name}"</b> (${u.empCode || u.id}) ใช่หรือไม่?</div>
+      <div class="text-[11px] text-slate-500 mt-1 font-normal leading-relaxed">
+        เมื่อรีเซ็ตแล้ว รหัส PIN เดิมจะถูกล้าง และพนักงานจะต้องตั้งรหัส PIN 4 หลักใหม่เมื่อเข้าสู่ระบบครั้งต่อไป
+      </div>
+    </div>
+  `;
 
-  try {
-    const res = await fetch('/api/admin/reset-pin', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        adminId: me.id || me.empCode,
-        userId: u.id
-      })
-    });
+  showConfirmToast(confirmMsg, async () => {
+    try {
+      const res = await fetch('/api/admin/reset-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          adminId: me.id || me.empCode,
+          userId: u.id
+        })
+      });
 
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      showToast(data.error || 'เกิดข้อผิดพลาดในการรีเซ็ตรหัส PIN', 'error');
-      return;
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        showToast(data.error || 'เกิดข้อผิดพลาดในการรีเซ็ตรหัส PIN', 'error');
+        return;
+      }
+
+      u.hasPin = false;
+      clearUserPinVerification(u.id);
+
+      if (currentTab === 'employees') renderEmployeesAdminView();
+      showToast(`รีเซ็ตรหัส PIN ของ ${u.name} สำเร็จแล้ว พนักงานสามารถตั้งรหัสใหม่ได้ทันที 🔄`, 'success');
+    } catch (err) {
+      console.error('adminQuickResetPin error:', err);
+      showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
     }
-
-    u.hasPin = false;
-    clearUserPinVerification(u.id);
-
-    if (currentTab === 'employees') renderEmployeesAdminView();
-    showToast(`รีเซ็ตรหัส PIN ของ ${u.name} สำเร็จแล้ว พนักงานสามารถตั้งรหัสใหม่ได้ทันที 🔄`, 'success');
-  } catch (err) {
-    console.error('adminQuickResetPin error:', err);
-    showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
-  }
+  }, {
+    confirmText: 'รีเซ็ต PIN',
+    cancelText: 'ยกเลิก',
+    icon: 'key-round',
+    type: 'warning'
+  });
 }
 
 function closeAdminEditEmployeeModal() {
@@ -3514,34 +3554,46 @@ async function confirmDeleteEmployee(userId) {
     return;
   }
 
-  const confirmMsg = `⚠️ คุณต้องการลบข้อมูลพนักงานใช่หรือไม่?\n\nรหัส: ${target.empCode || '-'}\nชื่อ: ${target.name} (${target.nickname})\nตำแหน่ง: ${target.role || '-'}\nฝ่าย: ${target.department || '-'}\n\n* ข้อมูลจะถูกลบออกจากฐานข้อมูล SQLite ทันทีและไม่สามารถกู้คืนได้`;
-  if (!window.confirm(confirmMsg)) {
-    return;
-  }
+  const confirmMsg = `
+    <div>
+      <div class="font-bold text-rose-800 text-sm mb-1">ยืนยันการลบข้อมูลพนักงาน?</div>
+      <div>ต้องการลบข้อมูล <b>"${target.name}"</b> (${target.empCode || '-'}) ใช่หรือไม่?</div>
+      <div class="text-[11px] text-rose-600 mt-1 font-normal leading-relaxed">
+        * ข้อมูลจะถูกลบออกจากฐานข้อมูล SQLite ทันทีและไม่สามารถกู้คืนได้
+      </div>
+    </div>
+  `;
 
-  try {
-    const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}?adminUserId=${encodeURIComponent(me.id)}`, {
-      method: 'DELETE'
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      showToast(data.error || 'ไม่สามารถลบข้อมูลพนักงานได้', 'error');
-      return;
+  showConfirmToast(confirmMsg, async () => {
+    try {
+      const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}?adminUserId=${encodeURIComponent(me.id)}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        showToast(data.error || 'ไม่สามารถลบข้อมูลพนักงานได้', 'error');
+        return;
+      }
+
+      // Immediately update local array
+      users = users.filter(u => u.id !== userId);
+      lastLocalEditUserId = userId;
+      lastLocalEditTimestamp = Date.now();
+
+      populateUserSelector();
+      renderAll();
+      if (typeof renderEmployeesAdminView === 'function') {
+        renderEmployeesAdminView();
+      }
+      showToast(`ลบข้อมูลพนักงาน ${target.name} เรียบร้อยแล้ว`, 'warning');
+    } catch (err) {
+      console.error('confirmDeleteEmployee error:', err);
+      showToast('เกิดข้อผิดพลาดในการลบพนักงาน', 'error');
     }
-
-    // Immediately update local array
-    users = users.filter(u => u.id !== userId);
-    lastLocalEditUserId = userId;
-    lastLocalEditTimestamp = Date.now();
-
-    populateUserSelector();
-    renderAll();
-    if (typeof renderEmployeesAdminView === 'function') {
-      renderEmployeesAdminView();
-    }
-    showToast(`ลบข้อมูลพนักงาน ${target.name} เรียบร้อยแล้ว`, 'warning');
-  } catch (err) {
-    console.error('confirmDeleteEmployee error:', err);
-    showToast('เกิดข้อผิดพลาดในการลบพนักงาน', 'error');
-  }
+  }, {
+    confirmText: 'ลบข้อมูล',
+    cancelText: 'ยกเลิก',
+    icon: 'trash-2',
+    isDanger: true
+  });
 }
