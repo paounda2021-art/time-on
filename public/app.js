@@ -492,6 +492,9 @@ function handleServerMessage(msg) {
     if (u) {
       u.hasPin = msg.hasPin;
     }
+  } else if (msg.type === 'ACTIVITY_LOGS_CLEARED') {
+    logs = [];
+    renderActivityLogs();
   }
 }
 
@@ -1777,6 +1780,38 @@ function renderActivityLogs() {
       </div>
     `;
   }).join('');
+}
+
+async function confirmClearActivityLogs() {
+  const me = getCurrentUser();
+  if (!isUserAdmin(me)) {
+    showToast('เฉพาะผู้ดูแลระบบเท่านั้นที่สามารถล้างประวัติได้', 'warning');
+    return;
+  }
+
+  showConfirmToast('คุณต้องการล้างประวัติความเคลื่อนไหวล่าสุดของทีมทั้งหมดใช่หรือไม่?', async () => {
+    try {
+      const res = await fetch(`/api/admin/activity-logs?adminUserId=${encodeURIComponent(me.id)}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        showToast(data.error || 'ไม่สามารถล้างประวัติได้', 'error');
+        return;
+      }
+      logs = [];
+      renderActivityLogs();
+      showToast('ล้างประวัติความเคลื่อนไหวเรียบร้อยแล้ว ✨', 'success');
+    } catch (err) {
+      console.error('Error clearing activity logs:', err);
+      showToast('เกิดข้อผิดพลาดในการล้างประวัติ', 'error');
+    }
+  }, {
+    confirmText: 'ยืนยันล้างประวัติ',
+    cancelText: 'ยกเลิก',
+    isDanger: true,
+    icon: 'trash-2'
+  });
 }
 
 function formatTimeAgo(timestamp) {

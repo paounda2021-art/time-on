@@ -343,6 +343,17 @@ function addActivityLog(log) {
   }
 }
 
+const clearActivityLogsStmt = db.prepare('DELETE FROM activity_logs');
+function clearActivityLogs() {
+  try {
+    clearActivityLogsStmt.run();
+    return true;
+  } catch (err) {
+    console.error('Error clearing activity logs:', err.message);
+    return false;
+  }
+}
+
 // Nudges
 const getNudgesStmt = db.prepare('SELECT * FROM nudges ORDER BY timestamp DESC LIMIT 200');
 function getNudges() {
@@ -454,6 +465,7 @@ module.exports = {
   addAttendanceLog,
   getActivityLogs,
   addActivityLog,
+  clearActivityLogs,
   getNudges,
   addNudge,
   markNudgesAsRead,

@@ -1683,6 +1683,22 @@ app.get(['/api/logs', '/api/activity-logs'], (req, res) => {
   res.json({ logs: dbStorage.getActivityLogs(limit) });
 });
 
+// Clear Activity Logs (Admin only)
+app.delete(['/api/admin/activity-logs', '/api/logs'], (req, res) => {
+  const callerId = req.query.adminId || req.query.adminUserId || req.body?.adminId || req.body?.adminUserId;
+  const adminUser = db.users.find(u => u.id === callerId || u.empCode === callerId);
+  if (!adminUser || !isUserAdmin(adminUser)) {
+    return res.status(403).json({ error: 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่มีสิทธิ์ล้างประวัติ' });
+  }
+
+  dbStorage.clearActivityLogs();
+  broadcast({
+    type: 'ACTIVITY_LOGS_CLEARED'
+  });
+
+  res.json({ success: true, message: 'ล้างประวัติความเคลื่อนไหวเรียบร้อยแล้ว' });
+});
+
 // Attendance Logs REST endpoint
 app.get(['/api/attendance/logs', '/api/attendance-logs'], (req, res) => {
   const limit = parseInt(req.query.limit) || 100;
