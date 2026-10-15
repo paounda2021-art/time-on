@@ -35,7 +35,10 @@ let layoutMode = 'grid'; // 'grid' | 'compact' | 'list'
 function isUserAdmin(user) {
   if (!user) return false;
   if (user.isAdmin) return true;
-  const adminCodes = ['07170065', '07170183', '07171111', '07170001', '07170184', '07170185', '07170209'];
+  const adminCodes = [
+    '07170065', '07170183', '07171111', '07170001', '07170184', '07170185', '07170209',
+    '07170141', '07170110', '07170087' // ภาพิมน, อัมพิกา, ขวัญชนก
+  ];
   const code = user.empCode || '';
   if (adminCodes.includes(code)) return true;
   const role = user.role || '';

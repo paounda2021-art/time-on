@@ -68,7 +68,11 @@ if (!fs.existsSync(DATA_DIR)) {
 // Check if a user is System Admin (IT, Executives, HR Admins)
 function isUserAdmin(user) {
   if (!user) return false;
-  const adminCodes = ['07170065', '07170183', '07171111', '07170001', '07170184', '07170185', '07170209'];
+  if (user.isAdmin) return true;
+  const adminCodes = [
+    '07170065', '07170183', '07171111', '07170001', '07170184', '07170185', '07170209',
+    '07170141', '07170110', '07170087' // ภาพิมน, อัมพิกา, ขวัญชนก
+  ];
   const code = user.empCode || '';
   if (adminCodes.includes(code)) return true;
   const role = user.role || '';
@@ -1161,11 +1165,15 @@ setInterval(() => {
   const now = Date.now();
   let changed = false;
 
+  const AUTO_IDLE_TIMEOUT = 5 * 60 * 1000;    // ขั้นที่ 1: ตรวจจับการลุกจากโต๊ะ (Auto-Idle: 5 นาที)
+  const AUTO_OFFLINE_TIMEOUT = 10 * 60 * 1000; // ขั้นที่ 2: ตรวจจับการออกจากระบบ (Auto-Offline: 10 นาที)
+
   db.users.forEach((user) => {
     const timeSinceHeartbeat = now - (user.lastHeartbeat || 0);
+    const timeInIdle = user.statusChangedAt ? (now - user.statusChangedAt) : timeSinceHeartbeat;
 
-    // Auto-idle check (35 seconds of silence)
-    if ((user.status === 'available' || user.status === 'busy') && timeSinceHeartbeat > 35 * 1000) {
+    // ขั้นที่ 1: ตรวจจับการลุกจากโต๊ะ (Auto-idle: นานเกิน 5 นาที)
+    if ((user.status === 'available' || user.status === 'busy') && timeSinceHeartbeat > AUTO_IDLE_TIMEOUT) {
       const prevStatus = user.status;
       user.status = 'idle';
       user.statusChangedAt = now;
@@ -1192,8 +1200,8 @@ setInterval(() => {
       });
     }
 
-    // Auto-offline check (90 seconds of silence from idle)
-    if (user.status === 'idle' && timeSinceHeartbeat > 90 * 1000) {
+    // ขั้นที่ 2: ตรวจจับการออกจากระบบ (อยู่ในสถานะ ไม่อยู่ที่โต๊ะ ต่อเนื่องนานเกิน 10 นาที)
+    if (user.status === 'idle' && (timeInIdle > AUTO_OFFLINE_TIMEOUT || timeSinceHeartbeat > (AUTO_IDLE_TIMEOUT + AUTO_OFFLINE_TIMEOUT))) {
       user.status = 'offline';
       user.statusChangedAt = now;
       user.note = 'ขาดการเชื่อมต่อนานเกินกำหนด (Auto-Offline)';
