@@ -8,5 +8,7 @@ Thumbs.db
 data/*.sqlite-journal
 data/*.sqlite-shm
 data/*.sqlite-wal
+data/backups/
+*.zip
 _cloudflare_tunnel/*.json
 _cloudflare_tunnel/*.pem
