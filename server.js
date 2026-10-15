@@ -1542,6 +1542,81 @@ app.get('/api/users', (req, res) => {
   res.json({ users: db.users, serverTime: Date.now() });
 });
 
+// Admin Reset Attendance & Database Endpoint
+app.all(['/api/reset-attendance', '/api/admin/reset-database'], (req, res) => {
+  const now = Date.now();
+  const keepIds = ['u6', 'u20', 'u89', 'u90'];
+
+  try {
+    const rawDb = dbStorage.db;
+
+    // 1. Reset all other 94 employees to fresh offline / not_checked_in state
+    const resetStmt = rawDb.prepare(`
+      UPDATE users SET
+        status = 'offline',
+        statusChangedAt = ?,
+        note = '',
+        breakUntil = NULL,
+        isTabActive = 0,
+        attendanceStatus = 'not_checked_in',
+        attendanceLocation = 'WFH',
+        attendanceCheckInTime = NULL,
+        attendanceCheckInTimestamp = NULL,
+        attendanceCheckOutTime = NULL,
+        attendanceCheckOutTimestamp = NULL,
+        attendanceNote = ''
+      WHERE id NOT IN ('u6', 'u20', 'u89', 'u90')
+    `);
+    const resUsers = resetStmt.run(now);
+
+    // 2. Explicitly ensure the 4 active users are in 'available' status with proper check-in time
+    const setRealStmt = rawDb.prepare(`
+      UPDATE users SET
+        status = 'available',
+        statusChangedAt = ?,
+        lastHeartbeat = ?,
+        attendanceStatus = 'checked_in',
+        attendanceLocation = 'WFH',
+        attendanceCheckInTime = ?,
+        attendanceCheckInTimestamp = COALESCE(attendanceCheckInTimestamp, ?),
+        note = ?
+      WHERE id = ?
+    `);
+    setRealStmt.run(now, now, '08:51', now, 'พร้อมทำงาน 🟢', 'u6');
+    setRealStmt.run(now, now, '09:11', now, 'พร้อมทำงาน 🟢', 'u20');
+    setRealStmt.run(now, now, '08:02', now, 'พร้อมคุยแล้ว 🟢', 'u89');
+    setRealStmt.run(now, now, '11:22', now, 'พร้อมทำงาน 🟢', 'u90');
+
+    // 3. Clean attendance_logs & activity_logs for all other users
+    rawDb.prepare(`DELETE FROM attendance_logs WHERE userId NOT IN ('u6', 'u20', 'u89', 'u90')`).run();
+    rawDb.prepare(`DELETE FROM activity_logs WHERE userId NOT IN ('u6', 'u20', 'u89', 'u90')`).run();
+
+    // 4. Reload in-memory users cache
+    usersCache = dbStorage.getAllUsers();
+
+    // 5. Broadcast REFRESH_USERS to all connected clients
+    broadcast({
+      type: 'REFRESH_USERS',
+      users: usersCache,
+      logs: dbStorage.getActivityLogs(50),
+      attendanceLogs: dbStorage.getAttendanceLogs(50),
+      serverTime: now
+    });
+
+    const kept = usersCache.filter(u => keepIds.includes(u.id));
+
+    res.json({
+      success: true,
+      message: `รีเซ็ตฐานข้อมูลเรียบร้อยแล้ว คงเหลือ 4 ท่านที่เข้างานจริง`,
+      resetCount: resUsers.changes,
+      keptUsers: kept.map(u => ({ id: u.id, empCode: u.empCode, name: u.name, checkInTime: u.attendance?.checkInTime, status: u.status }))
+    });
+  } catch (err) {
+    console.error('Error resetting database:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Activity Logs REST endpoint
 app.get(['/api/logs', '/api/activity-logs'], (req, res) => {
   const limit = parseInt(req.query.limit) || 100;

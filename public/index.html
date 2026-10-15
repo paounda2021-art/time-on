@@ -25,14 +25,14 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=20261015_05">
 </head>
 <body class="min-h-screen flex flex-col antialiased selection:bg-sky-500 selection:text-white">
 
   <!-- Top Navbar (Mobile Friendly & Responsive) -->
   <!-- Top Navbar (Clean, Minimalist, No Selector/Demo) -->
-  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-sky-100 px-4 sm:px-8 py-3 shadow-xs">
-    <div class="max-w-[1680px] mx-auto flex items-center justify-between gap-4">
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-sky-100 py-3 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
       <!-- Left: Logo + System Title -->
       <div class="flex items-center gap-3">
         <img src="/assets/logo.jpg" alt="ตราสัญลักษณ์องค์การสะพานปลา" class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl object-contain bg-white shadow-xs border border-sky-100 p-0.5 shrink-0">
@@ -101,8 +101,8 @@
     </div>
   </header>
 
-  <!-- Main View Container -->
-  <main class="flex-1 max-w-[1680px] w-full mx-auto px-3 sm:px-6 py-5 space-y-5">
+  <!-- Main View Container (Proper left/right breathing margins) -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
     <!-- Section 1: Personal Status & Attendance Control Panel (Mobile Optimized) -->
     <section class="glass-panel rounded-2xl p-3.5 sm:p-6 shadow-md border border-sky-100 relative overflow-hidden bg-white/95">
@@ -313,9 +313,9 @@
     <!-- ========================================== -->
     <div id="viewPresence" class="space-y-4 sm:space-y-6">
 
-      <!-- Stats Counters Bar (Compact 2-col on Mobile, 5-col on Desktop) -->
+      <!-- Stats Counters Bar (Compact 2-col on Mobile, 5-col on Desktop, Clickable Filters) -->
       <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3.5">
-        <div class="bg-white rounded-xl p-2.5 sm:p-3.5 flex items-center gap-2 sm:gap-3 border border-sky-100 shadow-xs">
+        <div onclick="filterByStatus('ALL')" class="bg-white hover:bg-sky-50/60 rounded-xl p-2.5 sm:p-3.5 flex items-center gap-2 sm:gap-3 border border-sky-100 hover:border-sky-300 shadow-xs cursor-pointer transition select-none" title="คลิกเพื่อดูสมาชิกทั้งหมด">
           <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 border border-sky-100 shrink-0">
             <i data-lucide="users" class="w-4 h-4 sm:w-5 sm:h-5"></i>
           </div>
@@ -325,7 +325,7 @@
           </div>
         </div>
 
-        <div class="bg-white rounded-xl p-2.5 sm:p-3.5 flex items-center gap-2 sm:gap-3 border border-emerald-200 shadow-xs">
+        <div onclick="filterByStatus('available')" class="bg-white hover:bg-emerald-50/60 rounded-xl p-2.5 sm:p-3.5 flex items-center gap-2 sm:gap-3 border border-emerald-200 hover:border-emerald-400 shadow-xs cursor-pointer transition select-none" title="คลิกเพื่อดูเฉพาะคนที่พร้อมทำงาน">
           <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-100 shrink-0">
             <i data-lucide="check-circle-2" class="w-4 h-4 sm:w-5 sm:h-5"></i>
           </div>
@@ -335,7 +335,7 @@
           </div>
         </div>
 
-        <div class="bg-white rounded-xl p-2.5 sm:p-3.5 flex items-center gap-2 sm:gap-3 border border-amber-200 shadow-xs">
+        <div onclick="filterByStatus('busy')" class="bg-white hover:bg-amber-50/60 rounded-xl p-2.5 sm:p-3.5 flex items-center gap-2 sm:gap-3 border border-amber-200 hover:border-amber-400 shadow-xs cursor-pointer transition select-none" title="คลิกเพื่อดูเฉพาะคนที่ติดประชุม">
           <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 border border-amber-100 shrink-0">
             <i data-lucide="phone-call" class="w-4 h-4 sm:w-5 sm:h-5"></i>
           </div>
@@ -345,7 +345,7 @@
           </div>
         </div>
 
-        <div class="bg-white rounded-xl p-2.5 sm:p-3.5 flex items-center gap-2 sm:gap-3 border border-orange-200 shadow-xs">
+        <div onclick="filterByStatus('break')" class="bg-white hover:bg-orange-50/60 rounded-xl p-2.5 sm:p-3.5 flex items-center gap-2 sm:gap-3 border border-orange-200 hover:border-orange-400 shadow-xs cursor-pointer transition select-none" title="คลิกเพื่อดูเฉพาะคนที่พักเบรก">
           <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600 border border-orange-100 shrink-0">
             <i data-lucide="coffee" class="w-4 h-4 sm:w-5 sm:h-5"></i>
           </div>
@@ -355,7 +355,7 @@
           </div>
         </div>
 
-        <div class="bg-white rounded-xl p-2.5 sm:p-3.5 flex items-center gap-2 sm:gap-3 col-span-2 sm:col-span-1 border border-slate-200 shadow-xs justify-center sm:justify-start">
+        <div onclick="filterByStatus('offline')" class="bg-white hover:bg-slate-100/70 rounded-xl p-2.5 sm:p-3.5 flex items-center gap-2 sm:gap-3 col-span-2 sm:col-span-1 border border-slate-200 hover:border-slate-400 shadow-xs justify-center sm:justify-start cursor-pointer transition select-none" title="คลิกเพื่อดูคนที่ไม่อยู่ / เลิกงาน">
           <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 shrink-0">
             <i data-lucide="moon" class="w-4 h-4 sm:w-5 sm:h-5"></i>
           </div>
@@ -418,9 +418,9 @@
 
         <!-- Right: Search & Ready-only Toggle -->
         <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-          <label class="flex items-center justify-center sm:justify-start gap-2 text-xs text-slate-600 cursor-pointer select-none bg-white border border-slate-200 px-3 py-2 rounded-xl hover:border-sky-300 shadow-sm transition shrink-0">
-            <input type="checkbox" id="onlyAvailableToggle" onchange="applyFilters()" class="rounded text-sky-600 focus:ring-0">
-            <span class="font-medium">เฉพาะคนที่พร้อมคุย 🟢</span>
+          <label class="flex items-center justify-center sm:justify-start gap-2 text-xs text-sky-800 cursor-pointer select-none bg-sky-50 border border-sky-300 px-3 py-2 rounded-xl hover:border-sky-400 shadow-sm transition shrink-0 font-bold">
+            <input type="checkbox" id="onlyAvailableToggle" checked onchange="applyFilters()" class="rounded text-sky-600 focus:ring-sky-500 w-4 h-4 cursor-pointer">
+            <span>เฉพาะคนที่พร้อมทำงาน 🟢</span>
           </label>
           <div class="relative w-full sm:w-64">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -473,8 +473,8 @@
         </div>
       </div>
 
-      <!-- Main Team Cards Grid (1 col on mobile, 2 col on large mobile/tablet, 6 col on desktop) -->
-      <div id="teamGrid" class="grid grid-cols-1 min-[440px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
+      <!-- Main Team Cards Grid (1 col on mobile, 2 col tablet, 3-4 col desktop) -->
+      <div id="teamGrid" class="grid grid-cols-1 min-[480px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4">
         <!-- Rendered via JavaScript -->
       </div>
 
@@ -926,6 +926,6 @@
     TimeOn • ระบบดูสถานะความพร้อมทำงานและบันทึกเวลาปฏิบัติงาน Work From Home
   </footer>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=20261015_05"></script>
 </body>
 </html>

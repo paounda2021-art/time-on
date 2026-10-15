@@ -7,6 +7,7 @@ let attendanceLogs = [];
 let nudges = [];
 let currentUserId = localStorage.getItem('timeon_current_user_id') || 'u1';
 let activeFilterDept = 'ALL';
+let activeStatusFilter = 'ALL';
 let currentTab = 'presence'; // 'presence' | 'attendance'
 let targetNudgeUserId = null;
 let heartbeatInterval = null;
@@ -367,6 +368,13 @@ function handleServerMessage(msg) {
       nudges.unshift(msg.nudge);
     }
     renderNudges();
+  } else if (msg.type === 'REFRESH_USERS' || msg.type === 'RESET_ATTENDANCE') {
+    if (msg.users) users = msg.users;
+    if (msg.logs) logs = msg.logs;
+    if (msg.attendanceLogs) attendanceLogs = msg.attendanceLogs;
+    populateUserSelector();
+    renderAll();
+    showToast('รีเฟรชข้อมูลสถานะและเวลาการทำงานเรียบร้อยแล้ว 🔄', 'info');
     if (msg.toUserId === currentUserId) {
       playNotificationSound('nudge');
       showNudgeModal(msg.fromUser, msg.message);
@@ -975,15 +983,27 @@ function renderTeamGrid() {
   grid.innerHTML = '';
 
   const searchVal = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
-  const onlyAvailable = document.getElementById('onlyAvailableToggle')?.checked;
+  const toggle = document.getElementById('onlyAvailableToggle');
+  const onlyAvailable = toggle ? toggle.checked : true;
 
   const filtered = users.filter(u => {
     if (activeFilterDept !== 'ALL' && u.department !== activeFilterDept) return false;
-    if (onlyAvailable && u.status !== 'available') return false;
+
+    // Status filter
+    if (onlyAvailable) {
+      if (u.status !== 'available') return false;
+    } else if (activeStatusFilter !== 'ALL') {
+      if (activeStatusFilter === 'offline') {
+        if (u.status !== 'offline' && u.status !== 'idle') return false;
+      } else {
+        if (u.status !== activeStatusFilter) return false;
+      }
+    }
+
     if (searchVal) {
-      const matchName = u.name.toLowerCase().includes(searchVal);
-      const matchNick = u.nickname.toLowerCase().includes(searchVal);
-      const matchRole = u.role.toLowerCase().includes(searchVal);
+      const matchName = (u.name || '').toLowerCase().includes(searchVal);
+      const matchNick = (u.nickname || '').toLowerCase().includes(searchVal);
+      const matchRole = (u.role || '').toLowerCase().includes(searchVal);
       const matchDept = (u.department || '').toLowerCase().includes(searchVal);
       const matchNote = (u.note || '').toLowerCase().includes(searchVal);
       const matchCode = (u.empCode || '').toLowerCase().includes(searchVal);
@@ -1050,9 +1070,10 @@ function renderTeamGrid() {
 
     const att = u.attendance || { status: 'not_checked_in', location: 'WFH' };
     let attBadgeHtml = '';
-    if (att.status === 'checked_in' && att.checkInTime) {
+    // STRICT RULE: Only show check-in / check-out time if user is NOT offline and is actually checked in!
+    if (u.status !== 'offline' && att.status === 'checked_in' && att.checkInTime) {
       attBadgeHtml = `<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">เข้า ${att.checkInTime}</span>`;
-    } else if (att.status === 'checked_out' && att.checkOutTime) {
+    } else if (u.status !== 'offline' && att.status === 'checked_out' && att.checkOutTime) {
       attBadgeHtml = `<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">ออก ${att.checkOutTime}</span>`;
     } else {
       attBadgeHtml = `<span class="px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-400 border border-slate-200">ยังไม่ลงเวลา</span>`;
@@ -1062,6 +1083,13 @@ function renderTeamGrid() {
     let hbBadgeHtml = '';
     if (u.status !== 'offline' && hbDiff < 60) {
       hbBadgeHtml = `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200" title="กำลังใช้งาน"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>ออนไลน์</span>`;
+    }
+
+    let cleanNote = u.note || '';
+    if (u.status === 'offline') {
+      cleanNote = '<span class="text-slate-400 italic">ยังไม่เข้าปฏิบัติงาน</span>';
+    } else if (!cleanNote) {
+      cleanNote = '<span class="text-slate-400 italic">ไม่มีบันทึก</span>';
     }
 
     const card = document.createElement('div');
@@ -1089,7 +1117,7 @@ function renderTeamGrid() {
             <span class="w-1.5 h-1.5 rounded-full ${meta.dotClass}"></span>
             <span>${meta.label}</span>
           </span>
-          <span class="text-[11px] text-slate-600 hidden md:inline truncate max-w-xs">"${u.note || '-'}"</span>
+          <span class="text-[11px] text-slate-600 hidden md:inline truncate max-w-xs">${u.status === 'offline' ? 'ยังไม่เข้าปฏิบัติงาน' : (u.note || '-')}</span>
           ${attBadgeHtml}
           ${hbBadgeHtml}
           ${!isMe ? `
@@ -1133,9 +1161,9 @@ function renderTeamGrid() {
           </div>
 
           <!-- Note / Task Description (Compact 1-2 lines) -->
-          <div class="bg-slate-50/90 border border-slate-200/60 rounded-lg p-1.5 mb-2 min-h-[36px]" title="${u.note || ''}">
+          <div class="bg-slate-50/90 border border-slate-200/60 rounded-lg p-1.5 mb-2 min-h-[36px]" title="${u.status === 'offline' ? 'ยังไม่เข้าปฏิบัติงาน' : (u.note || '')}">
             <p class="text-[11px] text-slate-600 line-clamp-2 leading-tight font-medium">
-              ${u.note || '<span class="text-slate-400 italic">ไม่มีบันทึก</span>'}
+              ${cleanNote}
             </p>
           </div>
         </div>
@@ -1153,9 +1181,9 @@ function renderTeamGrid() {
               <i data-lucide="bell" class="w-3.5 h-3.5 text-amber-600"></i>
               <span class="text-[11px]">สะกิด</span>
             </button>
-          ` : `
+          ` : (u.status !== 'offline' && att.status === 'checked_in') ? `
             <span class="text-[11px] text-sky-700 font-bold bg-sky-50 px-2 py-0.5 rounded-md border border-sky-100">⏱️ ${durationStr}</span>
-          `}
+          ` : ''}
         </div>
       `;
     }
@@ -1607,7 +1635,24 @@ function filterDept(dept) {
   renderTeamGrid();
 }
 
+// Status Filter (Clickable from Stat Counter Cards)
+function filterByStatus(status) {
+  activeStatusFilter = status;
+  presencePage = 1;
+  const toggle = document.getElementById('onlyAvailableToggle');
+  if (toggle) {
+    toggle.checked = (status === 'available');
+  }
+  renderTeamGrid();
+}
+
 function applyFilters() {
+  const toggle = document.getElementById('onlyAvailableToggle');
+  if (toggle && toggle.checked) {
+    activeStatusFilter = 'available';
+  } else {
+    activeStatusFilter = 'ALL';
+  }
   presencePage = 1;
   renderTeamGrid();
 }
