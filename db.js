@@ -248,7 +248,12 @@ function saveUser(u) {
 // Attendance Logs
 const getAttendanceLogsStmt = db.prepare('SELECT * FROM attendance_logs ORDER BY timestamp DESC LIMIT ?');
 function getAttendanceLogs(limit = 100) {
-  return getAttendanceLogsStmt.all(limit);
+  try {
+    return getAttendanceLogsStmt.all(limit);
+  } catch (err) {
+    console.error('Error fetching attendance logs:', err.message);
+    return [];
+  }
 }
 
 const insertAttendanceLogStmt = db.prepare(`
@@ -256,13 +261,22 @@ const insertAttendanceLogStmt = db.prepare(`
   VALUES (@id, @userId, @userName, @action, @location, @time, @timestamp, @note)
 `);
 function addAttendanceLog(log) {
-  insertAttendanceLogStmt.run(log);
+  try {
+    insertAttendanceLogStmt.run(log);
+  } catch (err) {
+    console.error('Error adding attendance log:', err.message);
+  }
 }
 
 // Activity Logs
 const getActivityLogsStmt = db.prepare('SELECT * FROM activity_logs ORDER BY timestamp DESC LIMIT ?');
 function getActivityLogs(limit = 50) {
-  return getActivityLogsStmt.all(limit);
+  try {
+    return getActivityLogsStmt.all(limit);
+  } catch (err) {
+    console.error('Error fetching activity logs:', err.message);
+    return [];
+  }
 }
 
 const insertActivityLogStmt = db.prepare(`
@@ -270,7 +284,11 @@ const insertActivityLogStmt = db.prepare(`
   VALUES (@id, @userId, @userName, @type, @fromStatus, @toStatus, @note, @timestamp)
 `);
 function addActivityLog(log) {
-  insertActivityLogStmt.run(log);
+  try {
+    insertActivityLogStmt.run(log);
+  } catch (err) {
+    console.error('Error adding activity log:', err.message);
+  }
 }
 
 // Nudges

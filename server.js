@@ -1238,14 +1238,18 @@ setInterval(() => {
 
 // WebSocket connection handling
 wss.on('connection', (ws) => {
-  ws.send(JSON.stringify({
-    type: 'INIT',
-    users: db.users,
-    logs: db.activityLogs.slice(0, 30),
-    attendanceLogs: db.attendanceLogs ? db.attendanceLogs.slice(0, 30) : [],
-    nudges: db.nudges ? db.nudges.slice(0, 50) : [],
-    serverTime: Date.now()
-  }));
+  try {
+    ws.send(JSON.stringify({
+      type: 'INIT',
+      users: db.users,
+      logs: db.activityLogs.slice(0, 30),
+      attendanceLogs: db.attendanceLogs ? db.attendanceLogs.slice(0, 30) : [],
+      nudges: db.nudges ? db.nudges.slice(0, 50) : [],
+      serverTime: Date.now()
+    }));
+  } catch (err) {
+    console.error('Error during WS INIT send:', err.message);
+  }
 
   ws.on('message', (data) => {
     try {
