@@ -68,9 +68,17 @@ if (!fs.existsSync(DATA_DIR)) {
 // Check if a user is System Admin (IT, Executives, HR Admins)
 function isUserAdmin(user) {
   if (!user) return false;
-  if (user.isAdmin) return true;
+  if (typeof user.isAdmin === 'boolean') {
+    return user.isAdmin;
+  }
+  if (typeof user.isAdmin === 'number') {
+    return user.isAdmin === 1;
+  }
+  if (typeof user.isAdmin === 'string') {
+    return user.isAdmin === 'true' || user.isAdmin === '1';
+  }
   const adminCodes = [
-    '07170065', '07170183', '07171111', '07170001', '07170184', '07170185', '07170209',
+    '07170065', '07170183', '07171111', '07170001', '07170184', '07170209',
     '07170141', '07170110', '07170087' // ภาพิมน, อัมพิกา, ขวัญชนก
   ];
   const code = user.empCode || '';

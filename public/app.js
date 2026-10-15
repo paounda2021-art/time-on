@@ -31,12 +31,23 @@ let attendancePage = 1;
 let attendancePageSize = 50;
 let layoutMode = 'grid'; // 'grid' | 'compact' | 'list'
 
+let lastLocalEditUserId = null;
+let lastLocalEditTimestamp = 0;
+
 // Admin role check helper (Strictly IT Admin, Executives, and HR Admins)
 function isUserAdmin(user) {
   if (!user) return false;
-  if (user.isAdmin) return true;
+  if (typeof user.isAdmin === 'boolean') {
+    return user.isAdmin;
+  }
+  if (typeof user.isAdmin === 'number') {
+    return user.isAdmin === 1;
+  }
+  if (typeof user.isAdmin === 'string') {
+    return user.isAdmin === 'true' || user.isAdmin === '1';
+  }
   const adminCodes = [
-    '07170065', '07170183', '07171111', '07170001', '07170184', '07170185', '07170209',
+    '07170065', '07170183', '07171111', '07170001', '07170184', '07170209',
     '07170141', '07170110', '07170087' // ภาพิมน, อัมพิกา, ขวัญชนก
   ];
   const code = user.empCode || '';
@@ -437,7 +448,10 @@ function handleServerMessage(msg) {
     populateUserSelector();
     renderAll();
     if (currentTab === 'employees') renderEmployeesAdminView();
-    showToast(`พนักงานใหม่: ${msg.user?.name || ''} ถูกเพิ่มเข้าสู่ระบบแล้ว 🎉`, 'success');
+    const isRecentLocalCreate = (lastLocalEditUserId === msg.user?.id) && (Date.now() - lastLocalEditTimestamp < 4000);
+    if (!isRecentLocalCreate) {
+      showToast(`พนักงานใหม่: ${msg.user?.name || ''} ถูกเพิ่มเข้าสู่ระบบแล้ว 🎉`, 'success');
+    }
   } else if (msg.type === 'USER_UPDATED') {
     if (msg.user) {
       const idx = users.findIndex(u => u.id === msg.user.id);
@@ -455,7 +469,10 @@ function handleServerMessage(msg) {
     populateUserSelector();
     renderAll();
     if (currentTab === 'employees') renderEmployeesAdminView();
-    showToast(`อัปเดตข้อมูลพนักงาน ${msg.user?.name || ''} เรียบร้อยแล้ว ✨`, 'info');
+    const isRecentLocalUpdate = (lastLocalEditUserId === msg.user?.id) && (Date.now() - lastLocalEditTimestamp < 4000);
+    if (!isRecentLocalUpdate) {
+      showToast(`อัปเดตข้อมูลพนักงาน ${msg.user?.name || ''} เรียบร้อยแล้ว ✨`, 'info');
+    }
   } else if (msg.type === 'USER_DELETED') {
     const deletedId = msg.userId;
     users = users.filter(u => u.id !== deletedId);
@@ -466,7 +483,10 @@ function handleServerMessage(msg) {
     populateUserSelector();
     renderAll();
     if (currentTab === 'employees') renderEmployeesAdminView();
-    showToast(`ลบข้อมูลพนักงาน (${msg.deletedUser?.name || deletedId}) ออกจากระบบแล้ว`, 'warning');
+    const isRecentLocalDelete = (lastLocalEditUserId === deletedId) && (Date.now() - lastLocalEditTimestamp < 4000);
+    if (!isRecentLocalDelete) {
+      showToast(`ลบข้อมูลพนักงาน (${msg.deletedUser?.name || deletedId}) ออกจากระบบแล้ว`, 'warning');
+    }
   } else if (msg.type === 'USER_PIN_UPDATED') {
     const u = users.find(usr => usr.id === msg.userId);
     if (u) {
@@ -3096,7 +3116,21 @@ async function submitAddEmployee(e) {
       return;
     }
 
+    const newUser = data.user;
+    if (newUser) {
+      const idx = users.findIndex(u => u.id === newUser.id);
+      if (idx !== -1) users[idx] = newUser;
+      else users.push(newUser);
+      lastLocalEditUserId = newUser.id;
+      lastLocalEditTimestamp = Date.now();
+    }
+
     closeAddEmployeeModal();
+    populateUserSelector();
+    renderAll();
+    if (typeof renderEmployeesAdminView === 'function') {
+      renderEmployeesAdminView();
+    }
     showToast(`เพิ่มพนักงานใหม่ ${name} สำเร็จแล้ว 🎉`, 'success');
   } catch (err) {
     console.error('submitAddEmployee error:', err);
@@ -3246,7 +3280,30 @@ async function submitAdminEditEmployee(e) {
       return;
     }
 
+    // Immediately update local in-memory users state so UI changes reflect instantly
+    const updatedUser = data.user;
+    if (updatedUser) {
+      const idx = users.findIndex(u => u.id === updatedUser.id);
+      if (idx !== -1) {
+        users[idx] = updatedUser;
+      } else {
+        users.push(updatedUser);
+      }
+      if (updatedUser.id === currentUserId) {
+        renderMyStatus();
+        updateAdminVisibility();
+      }
+    }
+
+    lastLocalEditUserId = id;
+    lastLocalEditTimestamp = Date.now();
+
     closeAdminEditEmployeeModal();
+    populateUserSelector();
+    renderAll();
+    if (typeof renderEmployeesAdminView === 'function') {
+      renderEmployeesAdminView();
+    }
     showToast(`อัปเดตข้อมูลพนักงาน ${name} สำเร็จแล้ว ✨`, 'success');
   } catch (err) {
     console.error('submitAdminEditEmployee error:', err);
@@ -3292,6 +3349,17 @@ async function confirmDeleteEmployee(userId) {
     if (!res.ok || !data.success) {
       showToast(data.error || 'ไม่สามารถลบข้อมูลพนักงานได้', 'error');
       return;
+    }
+
+    // Immediately update local array
+    users = users.filter(u => u.id !== userId);
+    lastLocalEditUserId = userId;
+    lastLocalEditTimestamp = Date.now();
+
+    populateUserSelector();
+    renderAll();
+    if (typeof renderEmployeesAdminView === 'function') {
+      renderEmployeesAdminView();
     }
     showToast(`ลบข้อมูลพนักงาน ${target.name} เรียบร้อยแล้ว`, 'warning');
   } catch (err) {
