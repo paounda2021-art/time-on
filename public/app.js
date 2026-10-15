@@ -1,5 +1,5 @@
-// TimeOn - WFH Team Status & Attendance Pulse Logic (v2.2.1)
-const TIMEON_APP_VERSION = '2.2.1';
+// TimeOn - WFH Team Status & Attendance Pulse Logic (v2.2.2)
+const TIMEON_APP_VERSION = '2.2.2';
 console.log(`%c[TimeOn] Active Version: v${TIMEON_APP_VERSION}`, 'color: #0284c7; font-weight: bold; font-size: 13px;');
 
 // Cache safety: verify version and log
@@ -491,6 +491,12 @@ function handleServerMessage(msg) {
     const u = users.find(usr => usr.id === msg.userId);
     if (u) {
       u.hasPin = msg.hasPin;
+    }
+    if (msg.hasPin === false) {
+      clearUserPinVerification(msg.userId);
+    }
+    if (currentTab === 'employees') {
+      renderEmployeesAdminView();
     }
   } else if (msg.type === 'ACTIVITY_LOGS_CLEARED') {
     logs = [];
@@ -3025,9 +3031,15 @@ function renderEmployeesAdminView() {
           </div>
         </td>
         <td class="p-3">
-          <span class="font-mono font-bold text-sky-800 bg-sky-50/80 px-2 py-0.5 rounded border border-sky-200 text-[11px]">
-            ${u.empCode || '-'}
-          </span>
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="font-mono font-bold text-sky-800 bg-sky-50/80 px-2 py-0.5 rounded border border-sky-200 text-[11px]">
+              ${u.empCode || '-'}
+            </span>
+            ${u.hasPin
+              ? '<span title="ตั้งรหัส PIN แล้ว (คลิกแก้ไขหรือปุ่มรีเซ็ตหากพนักงานลืมรหัส)" class="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 font-bold inline-flex items-center gap-0.5 cursor-help">🔒 PIN</span>'
+              : '<span title="ยังไม่ได้ตั้งรหัส PIN (ระบบจะให้ตั้งเมื่อเข้าใช้งาน)" class="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 font-medium inline-flex items-center gap-0.5 cursor-help">⚪ No PIN</span>'
+            }
+          </div>
         </td>
         <td class="p-3 font-medium text-slate-700">
           ${u.role || '-'}
@@ -3053,6 +3065,12 @@ function renderEmployeesAdminView() {
               <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
               <span>แก้ไข</span>
             </button>
+            ${u.hasPin ? `
+              <button onclick="adminQuickResetPin('${u.id}')" title="รีเซ็ตรหัส PIN ของ ${u.name}" class="px-2 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold border border-amber-200 transition flex items-center gap-1 cursor-pointer">
+                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                <span>รีเซ็ต PIN</span>
+              </button>
+            ` : ''}
             ${isSelf ? `
               <span class="px-2 py-1 text-[11px] text-slate-400 font-medium bg-slate-100 rounded-lg">ตัวเอง</span>
             ` : `
@@ -3211,10 +3229,134 @@ function openAdminEditEmployeeModal(userId) {
     avatarPreview.src = getUserAvatar(u);
   }
 
+  const pinStatusEl = document.getElementById('adminEditPinStatus');
+  const btnReset = document.getElementById('btnAdminResetPin');
+  if (pinStatusEl) {
+    if (u.hasPin) {
+      pinStatusEl.innerHTML = `<span class="inline-flex items-center gap-1 text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">🔐 ตั้งรหัส PIN เรียบร้อยแล้ว</span>`;
+      if (btnReset) btnReset.classList.remove('hidden');
+    } else {
+      pinStatusEl.innerHTML = `<span class="inline-flex items-center gap-1 text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-md">⚪ ยังไม่ได้ตั้งรหัส PIN (จะให้ตั้งเมื่อเข้าใช้งาน)</span>`;
+      if (btnReset) btnReset.classList.add('hidden');
+    }
+  }
+
   const modal = document.getElementById('adminEditEmployeeModal');
   if (modal) {
     modal.classList.remove('hidden');
     modal.classList.add('flex');
+  }
+  if (window.lucide) window.lucide.createIcons();
+}
+
+async function adminResetEmployeePin() {
+  const me = getCurrentUser();
+  if (!isUserAdmin(me)) {
+    showToast('เฉพาะผู้ดูแลระบบเท่านั้นที่สามารถรีเซ็ตรหัส PIN ได้', 'warning');
+    return;
+  }
+
+  const userId = document.getElementById('adminEditEmpId')?.value;
+  const u = users.find(x => x.id === userId);
+  if (!u) {
+    showToast('ไม่พบข้อมูลพนักงาน', 'error');
+    return;
+  }
+
+  if (!u.hasPin) {
+    showToast(`พนักงานท่านนี้ (${u.name}) ยังไม่ได้ตั้งรหัส PIN`, 'info');
+    return;
+  }
+
+  const confirmMsg = `ยืนยันการรีเซ็ตรหัส PIN ของ "${u.name}" (${u.empCode || u.id}) ใช่หรือไม่?\n\nเมื่อรีเซ็ตแล้ว รหัส PIN เดิมจะถูกล้าง และพนักงานจะต้องตั้งรหัส PIN 4 หลักใหม่เมื่อเข้าสู่ระบบครั้งต่อไป`;
+  if (!confirm(confirmMsg)) return;
+
+  const btn = document.getElementById('btnAdminResetPin');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i><span>กำลังรีเซ็ต...</span>`;
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  try {
+    const res = await fetch('/api/admin/reset-pin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        adminId: me.id || me.empCode,
+        userId: u.id
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      showToast(data.error || 'เกิดข้อผิดพลาดในการรีเซ็ตรหัส PIN', 'error');
+      return;
+    }
+
+    u.hasPin = false;
+    clearUserPinVerification(u.id);
+
+    const pinStatusEl = document.getElementById('adminEditPinStatus');
+    if (pinStatusEl) {
+      pinStatusEl.innerHTML = `<span class="inline-flex items-center gap-1 text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-md">⚪ ยังไม่ได้ตั้งรหัส PIN (จะให้ตั้งเมื่อเข้าใช้งาน)</span>`;
+    }
+    if (btn) btn.classList.add('hidden');
+
+    if (currentTab === 'employees') renderEmployeesAdminView();
+    showToast(`รีเซ็ตรหัส PIN ของ ${u.name} เรียบร้อยแล้ว (สามารถตั้ง PIN ใหม่ได้ทันที) 🔄`, 'success');
+  } catch (err) {
+    console.error('adminResetEmployeePin error:', err);
+    showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i><span>รีเซ็ตรหัส PIN</span>`;
+      if (window.lucide) window.lucide.createIcons();
+    }
+  }
+}
+
+async function adminQuickResetPin(userId) {
+  const me = getCurrentUser();
+  if (!isUserAdmin(me)) {
+    showToast('เฉพาะผู้ดูแลระบบเท่านั้นที่สามารถรีเซ็ตรหัส PIN ได้', 'warning');
+    return;
+  }
+
+  const u = users.find(x => x.id === userId);
+  if (!u) {
+    showToast('ไม่พบข้อมูลพนักงาน', 'error');
+    return;
+  }
+
+  const confirmMsg = `ยืนยันการรีเซ็ตรหัส PIN ของ "${u.name}" (${u.empCode || u.id}) ใช่หรือไม่?\n\nเมื่อรีเซ็ตแล้ว รหัส PIN เดิมจะถูกล้าง และพนักงานจะต้องตั้งรหัส PIN 4 หลักใหม่เมื่อเข้าสู่ระบบครั้งต่อไป`;
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    const res = await fetch('/api/admin/reset-pin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        adminId: me.id || me.empCode,
+        userId: u.id
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      showToast(data.error || 'เกิดข้อผิดพลาดในการรีเซ็ตรหัส PIN', 'error');
+      return;
+    }
+
+    u.hasPin = false;
+    clearUserPinVerification(u.id);
+
+    if (currentTab === 'employees') renderEmployeesAdminView();
+    showToast(`รีเซ็ตรหัส PIN ของ ${u.name} สำเร็จแล้ว พนักงานสามารถตั้งรหัสใหม่ได้ทันที 🔄`, 'success');
+  } catch (err) {
+    console.error('adminQuickResetPin error:', err);
+    showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
   }
 }
 

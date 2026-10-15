@@ -15,8 +15,8 @@ const DATA_DIR = path.join(__dirname, 'data');
 const DB_FILE = path.join(DATA_DIR, 'store.json');
 const dbStorage = require('./db.js');
 
-const APP_VERSION = '2.2.1';
-const APP_BUILD = '20261015-v2.2.1';
+const APP_VERSION = '2.2.2';
+const APP_BUILD = '20261015-v2.2.2';
 
 app.use(cors());
 app.use(express.json({ limit: '15mb' }));
@@ -1885,6 +1885,50 @@ app.post(['/api/user/verify-pin', '/api/admin/verify-pin'], (req, res) => {
   });
 });
 
+// 3. Reset 4-Digit PIN (เฉพาะ Admin / HR สำหรับกรณีพนักงานลืมรหัส PIN)
+app.post(['/api/admin/reset-pin', '/api/admin/users/:id/reset-pin'], (req, res) => {
+  const adminId = req.body.adminId || req.body.adminUserId || req.query.adminId;
+  const targetUserId = req.params.id || req.body.userId || req.body.targetUserId || req.body.empCode;
+
+  const adminUser = db.users.find(u => u.id === adminId || u.empCode === adminId);
+  if (!adminUser || !isUserHRorAdmin(adminUser)) {
+    return res.status(403).json({ success: false, error: 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่มีสิทธิ์รีเซ็ตรหัส PIN' });
+  }
+
+  const user = db.users.find(u => u.id === targetUserId || u.empCode === targetUserId);
+  if (!user) {
+    return res.status(404).json({ success: false, error: 'ไม่พบข้อมูลพนักงานที่ต้องการรีเซ็ตรหัส PIN' });
+  }
+
+  // Clear PIN in SQLite and memory
+  dbStorage.setUserPin(user.id, null);
+  user.pin = null;
+  user.hasPin = false;
+
+  const now = Date.now();
+  const actLog = {
+    id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    userId: user.id,
+    userName: user.name,
+    type: 'pin_reset',
+    fromStatus: user.status,
+    toStatus: user.status,
+    note: `ผู้ดูแลระบบ (${adminUser.name}) ได้รีเซ็ตรหัส PIN ของ ${user.name} เรียบร้อยแล้ว 🔄 (สามารถตั้ง PIN ใหม่ได้ทันที)`,
+    timestamp: now
+  };
+  db.activityLogs.unshift(actLog);
+  if (db.activityLogs.length > 50) db.activityLogs.pop();
+
+  saveDB(user);
+  broadcast({ type: 'USER_PIN_UPDATED', userId: user.id, hasPin: false });
+
+  res.json({
+    success: true,
+    message: `รีเซ็ตรหัส PIN ของ ${user.name} สำเร็จแล้ว พนักงานสามารถตั้งรหัสใหม่ได้ทันที`,
+    user: { id: user.id, name: user.name, empCode: user.empCode, hasPin: false }
+  });
+});
+
 // ============================================================
 // ADMIN EMPLOYEE MANAGEMENT API (เพิ่ม / แก้ไข / ลบ พนักงาน)
 // ============================================================
@@ -2023,6 +2067,13 @@ app.put('/api/admin/users/:id', (req, res) => {
     user.avatar = dbStorage.saveAvatarFile(user.empCode || user.id, avatar);
   } else if (avatar) {
     user.avatar = avatar;
+  }
+
+  if (req.body.resetPin) {
+    dbStorage.setUserPin(user.id, null);
+    user.pin = null;
+    user.hasPin = false;
+    broadcast({ type: 'USER_PIN_UPDATED', userId: user.id, hasPin: false });
   }
 
   dbStorage.saveUser(user);

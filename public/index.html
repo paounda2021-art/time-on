@@ -44,7 +44,7 @@
           <div class="flex items-center gap-2 flex-wrap">
             <h1 class="text-base sm:text-xl font-bold tracking-tight text-slate-800">TimeOn</h1>
             <span class="px-2 py-0.5 text-[10px] sm:text-xs font-semibold rounded-full bg-sky-100 text-sky-700 border border-sky-200">WFH Presence</span>
-            <span class="px-2 py-0.5 text-[10px] sm:text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono shadow-2xs">v2.2.1</span>
+            <span class="px-2 py-0.5 text-[10px] sm:text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono shadow-2xs">v2.2.2</span>
           </div>
           <p class="text-[11px] sm:text-xs text-slate-500 hidden sm:block">ระบบสถานะพร้อมทำงานและบันทึกเวลาปฏิบัติงาน องค์การสะพานปลา</p>
         </div>
@@ -1101,6 +1101,14 @@
           </button>
         </div>
       </form>
+
+      <!-- Forgot PIN Notice -->
+      <div class="mt-4 pt-3 border-t border-slate-100 text-center">
+        <p class="text-[11px] text-slate-500 flex items-center justify-center gap-1.5">
+          <i data-lucide="help-circle" class="w-3.5 h-3.5 text-amber-500 shrink-0"></i>
+          <span>ลืมรหัส PIN? แจ้งผู้ดูแลระบบ (Admin) เพื่อรีเซ็ตรหัส</span>
+        </p>
+      </div>
     </div>
   </div>
 
@@ -1433,6 +1441,24 @@
           </div>
         </div>
 
+        <!-- 4-Digit PIN Security Management -->
+        <div class="p-3 bg-amber-50/70 border border-amber-200 rounded-2xl flex items-center justify-between gap-3">
+          <div class="min-w-0">
+            <div class="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+              <i data-lucide="key-round" class="w-4 h-4 text-amber-700 shrink-0"></i>
+              <span>รหัส PIN ยืนยันตัวตน (4 หลัก)</span>
+            </div>
+            <div id="adminEditPinStatus" class="text-[11px] text-slate-600 mt-0.5">
+              กำลังโหลดสถานะ PIN...
+            </div>
+          </div>
+          <button type="button" id="btnAdminResetPin" onclick="adminResetEmployeePin()"
+            class="px-3 py-1.5 text-xs font-bold rounded-xl bg-white hover:bg-amber-100 text-amber-800 border border-amber-300 transition shadow-2xs flex items-center gap-1.5 shrink-0 cursor-pointer">
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+            <span>รีเซ็ตรหัส PIN</span>
+          </button>
+        </div>
+
         <div class="pt-3 border-t border-slate-100 flex items-center gap-2">
           <button type="button" onclick="closeAdminEditEmployeeModal()" class="flex-1 py-2.5 text-xs rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition cursor-pointer">
             ยกเลิก
@@ -1458,7 +1484,7 @@
         <span>ระบบดูสถานะความพร้อมทำงานและบันทึกเวลาปฏิบัติงาน Work From Home</span>
         <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-sky-50 text-sky-800 font-mono font-bold text-[10px] border border-sky-200 shadow-2xs">
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span>v2.2.1</span>
+          <span>v2.2.2</span>
         </span>
       </div>
       <p class="text-[11px] text-slate-500 font-medium text-center">
@@ -1467,6 +1493,6 @@
     </div>
   </footer>
 
-  <script src="app.js?v=2.2.1"></script>
+  <script src="app.js?v=2.2.2"></script>
 </body>
 </html>
