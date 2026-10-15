@@ -1,5 +1,5 @@
-// TimeOn - WFH Team Status & Attendance Pulse Logic (v2.2.3)
-const TIMEON_APP_VERSION = '2.2.3';
+// TimeOn - WFH Team Status & Attendance Pulse Logic (v2.2.4)
+const TIMEON_APP_VERSION = '2.2.4';
 console.log(`%c[TimeOn] Active Version: v${TIMEON_APP_VERSION}`, 'color: #0284c7; font-weight: bold; font-size: 13px;');
 
 // Cache safety: verify version and log
@@ -2637,7 +2637,15 @@ function loginAndEnterDashboard() {
     );
   }
 
-  if (!targetUser) return;
+  if (!targetUser) {
+    showToast('กรุณากรอกรหัสพนักงาน ก่อนเข้าสู่ระบบ', 'warning');
+    if (input) {
+      input.focus();
+      input.classList.add('border-rose-400', 'ring-2', 'ring-rose-200');
+      setTimeout(() => input.classList.remove('border-rose-400', 'ring-2', 'ring-rose-200'), 1500);
+    }
+    return;
+  }
 
   requireUserPinVerification(targetUser, () => {
     closeClockInModal();
