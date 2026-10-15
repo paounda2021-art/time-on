@@ -1,0 +1,7 @@
+tunnel: 6e9c92af-91d7-4b69-b819-cfd7a2f95971
+credentials-file: C:\apps\time-on\_cloudflare_tunnel\6e9c92af-91d7-4b69-b819-cfd7a2f95971.json
+
+ingress:
+  - hostname: timeon.fishmarket.co.th
+    service: http://127.0.0.1:3005
+  - service: http_status:404

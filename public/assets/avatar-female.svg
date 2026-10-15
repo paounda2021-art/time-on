@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgFemale" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff1f2" />
+      <stop offset="100%" stop-color="#fce7f3" />
+    </linearGradient>
+    <linearGradient id="femaleBody" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#e11d48" />
+      <stop offset="100%" stop-color="#be123c" />
+    </linearGradient>
+    <linearGradient id="femaleHair" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#334155" />
+      <stop offset="100%" stop-color="#1e293b" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background Circle with subtle border -->
+  <rect width="160" height="160" rx="80" fill="url(#bgFemale)" />
+  <circle cx="80" cy="80" r="79" fill="none" stroke="#fbcfe8" stroke-width="2" />
+
+  <!-- Back Hair (Behind Shoulders) -->
+  <path d="M48 65 C44 95, 46 120, 56 130 C64 138, 96 138, 104 130 C114 120, 116 95, 112 65 Z" fill="url(#femaleHair)" />
+
+  <!-- Shoulders & Torso (Female Blouse / Suit) -->
+  <path d="M30 160 C30 128, 54 112, 80 112 C106 112, 130 128, 130 160 Z" fill="url(#femaleBody)" />
+
+  <!-- Collar / Blouse V-neck -->
+  <path d="M80 130 L68 112 L92 112 Z" fill="#ffffff" opacity="0.9" />
+  <circle cx="80" cy="122" r="2.5" fill="#e11d48" />
+
+  <!-- Neck -->
+  <rect x="71" y="86" width="18" height="28" rx="5" fill="#fed7aa" />
+
+  <!-- Head Base -->
+  <ellipse cx="80" cy="68" rx="25" ry="29" fill="#fed7aa" />
+
+  <!-- Female Ears -->
+  <circle cx="55" cy="71" r="5" fill="#fed7aa" />
+  <circle cx="105" cy="71" r="5" fill="#fed7aa" />
+
+  <!-- Female Styled Hair (Front & Sides) -->
+  <path d="M54 68 C50 40, 62 30, 80 30 C98 30, 110 40, 106 68 C103 54, 94 40, 80 40 C66 40, 57 54, 54 68 Z" fill="url(#femaleHair)" />
+  <!-- Hair side bangs -->
+  <path d="M52 65 C50 82, 54 95, 58 100 C60 92, 58 80, 56 68 Z" fill="url(#femaleHair)" />
+  <path d="M108 65 C110 82, 106 95, 102 100 C100 92, 102 80, 104 68 Z" fill="url(#femaleHair)" />
+</svg>

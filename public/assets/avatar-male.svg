@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgMale" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f0f9ff" />
+      <stop offset="100%" stop-color="#dbeafe" />
+    </linearGradient>
+    <linearGradient id="maleBody" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0284c7" />
+      <stop offset="100%" stop-color="#0369a1" />
+    </linearGradient>
+    <linearGradient id="maleHair" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background Circle with subtle border -->
+  <rect width="160" height="160" rx="80" fill="url(#bgMale)" />
+  <circle cx="80" cy="80" r="79" fill="none" stroke="#bae6fd" stroke-width="2" />
+
+  <!-- Shoulders & Torso (Male Suit / Shirt) -->
+  <path d="M28 160 C28 126, 52 110, 80 110 C108 110, 132 126, 132 160 Z" fill="url(#maleBody)" />
+
+  <!-- Collar / Tie Detail -->
+  <path d="M80 134 L66 110 L94 110 Z" fill="#ffffff" opacity="0.9" />
+  <path d="M80 142 L74 110 L86 110 Z" fill="#0284c7" />
+
+  <!-- Neck -->
+  <rect x="70" y="86" width="20" height="28" rx="6" fill="#fed7aa" />
+
+  <!-- Head Base -->
+  <ellipse cx="80" cy="68" rx="26" ry="30" fill="#fed7aa" />
+
+  <!-- Male Ears -->
+  <circle cx="53" cy="70" r="6" fill="#fed7aa" />
+  <circle cx="107" cy="70" r="6" fill="#fed7aa" />
+
+  <!-- Male Short Hair Cut -->
+  <path d="M53 62 C52 38, 64 32, 80 32 C96 32, 108 38, 107 62 C105 52, 98 42, 88 42 C78 42, 70 44, 62 44 C56 44, 53 54, 53 62 Z" fill="url(#maleHair)" />
+</svg>
