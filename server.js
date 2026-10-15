@@ -15,8 +15,8 @@ const DATA_DIR = path.join(__dirname, 'data');
 const DB_FILE = path.join(DATA_DIR, 'store.json');
 const dbStorage = require('./db.js');
 
-const APP_VERSION = '2.1.0';
-const APP_BUILD = '20261015-v2.1.0';
+const APP_VERSION = '2.2.0';
+const APP_BUILD = '20261015-v2.2.0';
 
 app.use(cors());
 app.use(express.json({ limit: '15mb' }));

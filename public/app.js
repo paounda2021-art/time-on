@@ -1,5 +1,5 @@
-// TimeOn - WFH Team Status & Attendance Pulse Logic (v2.1.0)
-const TIMEON_APP_VERSION = '2.1.0';
+// TimeOn - WFH Team Status & Attendance Pulse Logic (v2.2.0)
+const TIMEON_APP_VERSION = '2.2.0';
 console.log(`%c[TimeOn] Active Version: v${TIMEON_APP_VERSION}`, 'color: #0284c7; font-weight: bold; font-size: 13px;');
 
 // Cache safety: verify version and log
