@@ -245,6 +245,17 @@ function saveUser(u) {
   return getUserById(u.id);
 }
 
+const deleteUserStmt = db.prepare('DELETE FROM users WHERE id = ?');
+function deleteUser(id) {
+  try {
+    deleteUserStmt.run(id);
+    return true;
+  } catch (err) {
+    console.error('Error deleting user:', err.message);
+    return false;
+  }
+}
+
 // Attendance Logs
 const getAttendanceLogsStmt = db.prepare('SELECT * FROM attendance_logs ORDER BY timestamp DESC LIMIT ?');
 function getAttendanceLogs(limit = 100) {
@@ -252,6 +263,16 @@ function getAttendanceLogs(limit = 100) {
     return getAttendanceLogsStmt.all(limit);
   } catch (err) {
     console.error('Error fetching attendance logs:', err.message);
+    return [];
+  }
+}
+
+const getAttendanceLogsByRangeStmt = db.prepare('SELECT * FROM attendance_logs WHERE timestamp >= ? AND timestamp <= ? ORDER BY timestamp DESC');
+function getAttendanceLogsByDateRange(startTs, endTs) {
+  try {
+    return getAttendanceLogsByRangeStmt.all(startTs, endTs);
+  } catch (err) {
+    console.error('Error fetching attendance logs by range:', err.message);
     return [];
   }
 }
@@ -395,7 +416,9 @@ module.exports = {
   getUserById,
   getUserByEmpCode,
   saveUser,
+  deleteUser,
   getAttendanceLogs,
+  getAttendanceLogsByDateRange,
   addAttendanceLog,
   getActivityLogs,
   addActivityLog,

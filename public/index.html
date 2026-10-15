@@ -290,17 +290,26 @@
 
     <!-- Navigation Tabs (Presence vs Timesheet: Full Width & Compact on Mobile) -->
     <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between border-b border-sky-200/80 pb-2 gap-2">
-      <div id="navTabsContainer" class="flex items-center gap-2 w-full sm:w-auto">
-        <button id="tabBtnPresence" onclick="switchMainTab('presence')" class="px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-sky-600 text-white shadow-sm transition flex items-center justify-center gap-1.5">
+      <div id="navTabsContainer" class="flex items-center flex-wrap gap-2 w-full sm:w-auto">
+        <button id="tabBtnPresence" onclick="switchMainTab('presence')" class="px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-sky-600 text-white shadow-sm transition flex items-center justify-center gap-1.5 cursor-pointer">
           <i data-lucide="layout-grid" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
           <span class="sm:hidden">🟢 สถานะทีม</span>
           <span class="hidden sm:inline">สถานะความพร้อมทีม (Presence Pulse)</span>
         </button>
-        <button id="tabBtnAttendance" onclick="switchMainTab('attendance')" class="hidden px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-white hover:bg-sky-50 text-slate-600 border border-slate-200 transition flex items-center justify-center gap-1.5">
+        <button id="tabBtnAttendance" onclick="switchMainTab('attendance')" class="hidden px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-white hover:bg-sky-50 text-slate-600 border border-slate-200 transition flex items-center justify-center gap-1.5 cursor-pointer">
           <i data-lucide="calendar-check" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-sky-600"></i>
           <span class="sm:hidden">⏱️ ลงเวลา</span>
           <span class="hidden sm:inline">ตารางบันทึกการลงเวลา (Attendance Log)</span>
           <span id="tabAttendanceLockBadge" class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-0.5">
+            <i data-lucide="shield-check" class="w-3 h-3"></i>
+            <span>Admin</span>
+          </span>
+        </button>
+        <button id="tabBtnEmployees" onclick="switchMainTab('employees')" class="hidden px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-white hover:bg-sky-50 text-slate-600 border border-slate-200 transition flex items-center justify-center gap-1.5 cursor-pointer">
+          <i data-lucide="users-cog" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-sky-600"></i>
+          <span class="sm:hidden">👥 จัดการพนักงาน</span>
+          <span class="hidden sm:inline">จัดการข้อมูลพนักงาน (Employee Management)</span>
+          <span id="tabEmployeesLockBadge" class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-0.5">
             <i data-lucide="shield-check" class="w-3 h-3"></i>
             <span>Admin</span>
           </span>
@@ -603,9 +612,60 @@
           </div>
         </div>
 
+        <!-- Card: ส่งออกรายงานและการกรองช่วงวันที่ (Date Range Filter & Export with Thai Buddhist Calendar) -->
+        <div class="bg-gradient-to-r from-sky-50 via-white to-indigo-50/50 rounded-2xl p-4 border border-sky-200 shadow-xs flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0 border border-sky-200">
+              <i data-lucide="calendar-range" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <span class="text-xs font-bold text-sky-900 flex items-center gap-1.5">
+                <i data-lucide="calendar" class="w-3.5 h-3.5 text-sky-600"></i>
+                <span>ช่วงวันที่ออกรายงาน (ปฏิทินไทย พ.ศ.)</span>
+              </span>
+              <p class="text-xs font-semibold text-slate-600 mt-0.5">
+                เลือกช่วงวัน: <span class="text-sky-700 font-bold" id="thaiDateRangeText">วันนี้</span>
+              </p>
+            </div>
+          </div>
+
+          <!-- Date Selectors & Action Buttons -->
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center flex-wrap gap-2 text-xs">
+            <div class="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-xl border border-sky-200 shadow-2xs">
+              <span class="text-slate-500 font-bold shrink-0">ตั้งแต่:</span>
+              <input type="date" id="exportStartDate" onchange="updateThaiDatePreview()" class="bg-transparent font-bold text-slate-800 outline-none cursor-pointer">
+            </div>
+
+            <div class="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-xl border border-sky-200 shadow-2xs">
+              <span class="text-slate-500 font-bold shrink-0">ถึง:</span>
+              <input type="date" id="exportEndDate" onchange="updateThaiDatePreview()" class="bg-transparent font-bold text-slate-800 outline-none cursor-pointer">
+            </div>
+
+            <!-- Quick Presets -->
+            <div class="flex items-center gap-1 bg-sky-100/70 p-1 rounded-xl">
+              <button type="button" onclick="setExportPreset('today')" class="px-2 py-1 rounded-lg bg-white hover:bg-sky-50 text-slate-700 font-bold text-[11px] transition shadow-2xs cursor-pointer">วันนี้</button>
+              <button type="button" onclick="setExportPreset('7days')" class="px-2 py-1 rounded-lg bg-white hover:bg-sky-50 text-slate-700 font-bold text-[11px] transition shadow-2xs cursor-pointer">7 วัน</button>
+              <button type="button" onclick="setExportPreset('month')" class="px-2 py-1 rounded-lg bg-white hover:bg-sky-50 text-slate-700 font-bold text-[11px] transition shadow-2xs cursor-pointer">เดือนนี้</button>
+              <button type="button" onclick="setExportPreset('all')" class="px-2 py-1 rounded-lg bg-white hover:bg-sky-50 text-slate-700 font-bold text-[11px] transition shadow-2xs cursor-pointer">ทั้งหมด</button>
+            </div>
+
+            <!-- Export Buttons -->
+            <div class="flex items-center gap-1.5">
+              <button type="button" onclick="exportAttendanceWithDates('xlsx')" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-sm transition flex items-center gap-1.5 cursor-pointer">
+                <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i>
+                <span>📊 ส่งออก Excel (.xlsx)</span>
+              </button>
+              <button type="button" onclick="exportAttendanceWithDates('csv')" class="px-3.5 py-2 rounded-xl bg-white hover:bg-sky-50 text-sky-700 font-bold border border-sky-300 shadow-sm transition flex items-center gap-1.5 cursor-pointer">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                <span>📄 ส่งออก CSV (.csv)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Timesheet Table Section -->
         <div class="bg-white rounded-2xl border border-sky-100 shadow-sm overflow-hidden">
-          <div class="p-4 sm:p-5 border-b border-sky-100 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 bg-sky-50/40">
+          <div class="p-4 sm:p-5 border-b border-sky-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-sky-50/40">
             <div>
               <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
                 <i data-lucide="clipboard-list" class="w-4 h-4 text-sky-600"></i>
@@ -622,18 +682,6 @@
                 <option value="100">แสดง 100 คน / หน้า</option>
                 <option value="ALL">ดูทั้งหมด (View All)</option>
               </select>
-
-              <!-- Export Excel (.xlsx) Button -->
-              <button onclick="exportAttendanceExcel()" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition flex items-center gap-1.5">
-                <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i>
-                <span>📊 ส่งออก Excel (.xlsx)</span>
-              </button>
-
-              <!-- Export CSV Button -->
-              <button onclick="exportAttendanceCSV()" class="px-3.5 py-2 rounded-xl bg-white hover:bg-sky-50 text-sky-700 text-xs font-bold border border-sky-200 shadow-sm transition flex items-center gap-1.5">
-                <i data-lucide="download" class="w-3.5 h-3.5"></i>
-                <span>📄 ส่งออก CSV (.csv)</span>
-              </button>
             </div>
           </div>
 
@@ -684,6 +732,122 @@
 
       </div>
 
+    </div>
+
+    <!-- ============================================== -->
+    <!-- VIEW C: EMPLOYEE MANAGEMENT (จัดการข้อมูลพนักงาน) -->
+    <!-- ============================================== -->
+    <div id="viewEmployees" class="space-y-6 hidden">
+      <!-- Admin Header Banner -->
+      <div class="bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-600 rounded-2xl p-4 sm:p-5 text-white shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center shrink-0">
+            <i data-lucide="users-cog" class="w-6 h-6 text-sky-200"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold px-2 py-0.5 rounded bg-amber-400 text-slate-900 shadow-xs">Admin Management</span>
+              <span class="text-xs text-sky-100">เมนูจัดการพนักงาน อัปเดตฐานข้อมูล SQLite</span>
+            </div>
+            <h2 class="text-base sm:text-lg font-black text-white mt-0.5">
+              จัดการข้อมูลพนักงาน (เพิ่ม / แก้ไข / ลบ ข้อมูล)
+            </h2>
+          </div>
+        </div>
+
+        <button onclick="openAddEmployeeModal()" class="px-4 py-2.5 rounded-xl bg-white hover:bg-sky-50 text-sky-800 text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition flex items-center gap-2 shrink-0 cursor-pointer">
+          <i data-lucide="user-plus" class="w-4 h-4 text-sky-600"></i>
+          <span>+ เพิ่มพนักงานใหม่ (Add Employee)</span>
+        </button>
+      </div>
+
+      <!-- Overview Stats Bar -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="bg-white rounded-2xl p-4 border border-sky-100 shadow-xs">
+          <span class="text-xs text-slate-500 font-medium">พนักงานทั้งหมด</span>
+          <div class="flex items-baseline gap-1.5 mt-1">
+            <b id="adminEmpTotalCount" class="text-2xl font-black text-slate-800">0</b>
+            <span class="text-xs text-slate-400">คน</span>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl p-4 border border-sky-100 shadow-xs">
+          <span class="text-xs text-slate-500 font-medium">ผู้ดูแลระบบ (Admin)</span>
+          <div class="flex items-baseline gap-1.5 mt-1">
+            <b id="adminEmpAdminCount" class="text-2xl font-black text-amber-600">0</b>
+            <span class="text-xs text-slate-400">คน</span>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl p-4 border border-sky-100 shadow-xs">
+          <span class="text-xs text-slate-500 font-medium">พนักงานทั่วไป</span>
+          <div class="flex items-baseline gap-1.5 mt-1">
+            <b id="adminEmpRegularCount" class="text-2xl font-black text-sky-600">0</b>
+            <span class="text-xs text-slate-400">คน</span>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl p-4 border border-sky-100 shadow-xs">
+          <span class="text-xs text-slate-500 font-medium">หน่วยงาน / ฝ่าย</span>
+          <div class="flex items-baseline gap-1.5 mt-1">
+            <b class="text-2xl font-black text-indigo-600">12</b>
+            <span class="text-xs text-slate-400">ฝ่ายงาน</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Employee Management Table Section -->
+      <section class="bg-white rounded-2xl border border-sky-100 shadow-sm overflow-hidden">
+        <!-- Filter Toolbar -->
+        <div class="p-4 border-b border-slate-100 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 max-w-2xl">
+            <!-- Search -->
+            <div class="relative flex-1">
+              <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+              <input type="text" id="adminEmpSearchInput" oninput="filterEmployeesAdminTable()" placeholder="ค้นหาด้วยชื่อ, รหัสพนักงาน, ตำแหน่ง..." class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-sky-500">
+            </div>
+
+            <!-- Dept Filter -->
+            <select id="adminEmpDeptFilter" onchange="filterEmployeesAdminTable()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none cursor-pointer">
+              <option value="ALL">🏢 ทุกฝ่ายงาน (ทั้งหมด)</option>
+              <option value="ผู้บริหาร (ระดับ 11, 10)">👑 ผู้บริหาร (ระดับ 11, 10)</option>
+              <option value="ฝ่ายตรวจสอบภายใน">🔍 1. ฝ่ายตรวจสอบภายใน</option>
+              <option value="สำนักงานเลขานุการผู้อำนวยการ">📝 2. สำนักงานเลขานุการผู้อำนวยการ</option>
+              <option value="สำนักงานอำนวยการ">🏛️ 3. สำนักงานอำนวยการ</option>
+              <option value="ฝ่ายบริหารและพัฒนาองค์กร">👥 4. ฝ่ายบริหารและพัฒนาองค์กร</option>
+              <option value="ฝ่ายบัญชีการเงิน">💰 5. ฝ่ายบัญชีการเงิน</option>
+              <option value="ฝ่ายยุทธศาสตร์การพัฒนา">📈 6. ฝ่ายยุทธศาสตร์การพัฒนา</option>
+              <option value="ฝ่ายสินเชื่อ">💳 7. ฝ่ายสินเชื่อ</option>
+              <option value="ฝ่ายส่งเสริมและโครงการพิเศษ">🎯 8. ฝ่ายส่งเสริมและโครงการพิเศษ</option>
+              <option value="ฝ่ายสะพานปลาและท่าเทียบเรือประมง 1">⚓ 9. ฝ่ายสะพานปลาและท่าเทียบเรือประมง 1</option>
+              <option value="ฝ่ายสะพานปลาและท่าเทียบเรือประมง 2">⚓ 10. ฝ่ายสะพานปลาและท่าเทียบเรือประมง 2</option>
+              <option value="สำนักงานบริหารหนี้">📑 11. สำนักงานบริหารหนี้</option>
+            </select>
+          </div>
+
+          <span id="adminEmpResultCount" class="text-xs font-bold text-slate-500 shrink-0">
+            แสดง 0 คน
+          </span>
+        </div>
+
+        <!-- Table Container -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50/80 text-slate-600 font-bold border-b border-slate-100">
+              <tr>
+                <th class="py-3 px-3.5">#</th>
+                <th class="py-3 px-3.5">พนักงาน</th>
+                <th class="py-3 px-3.5">รหัสพนักงาน</th>
+                <th class="py-3 px-3.5">ตำแหน่ง</th>
+                <th class="py-3 px-3.5">ฝ่ายงาน / สำนัก</th>
+                <th class="py-3 px-3.5">ติดต่อ</th>
+                <th class="py-3 px-3.5">สิทธิ์</th>
+                <th class="py-3 px-3.5 text-center">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="adminEmployeesTableBody" class="divide-y divide-slate-100">
+              <!-- Rendered via JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
 
   </main>
@@ -920,6 +1084,238 @@
           <button type="button" onclick="saveUserProfile(event)" id="saveProfileBtn" class="flex-1 py-2.5 text-xs rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer">
             <i data-lucide="save" class="w-3.5 h-3.5"></i>
             <span>บันทึกข้อมูลส่วนตัว</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Add New Employee (สำหรับ Admin) -->
+  <div id="addEmployeeModal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white border border-sky-200 rounded-3xl p-5 sm:p-7 max-w-lg w-full shadow-2xl relative my-8 animate-in fade-in zoom-in-95">
+      <div class="flex items-start justify-between mb-4 border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-10 h-10 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center border border-sky-200 shrink-0">
+            <i data-lucide="user-plus" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">Admin Only</span>
+            <h3 class="text-base sm:text-lg font-bold text-slate-800">เพิ่มพนักงานใหม่เข้าสู่ระบบ</h3>
+          </div>
+        </div>
+        <button onclick="closeAddEmployeeModal()" class="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="addEmployeeForm" onsubmit="submitAddEmployee(event); return false;" class="space-y-3.5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">รหัสพนักงาน: <span class="text-rose-500 font-bold">*</span></label>
+            <input id="addEmpCode" type="text" required placeholder="เช่น 07170210"
+              class="w-full px-3 py-2 text-xs font-bold text-slate-800 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">ชื่อเล่น: <span class="text-rose-500 font-bold">*</span></label>
+            <input id="addEmpNickname" type="text" required placeholder="เช่น เมย์, บอย"
+              class="w-full px-3 py-2 text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">ชื่อ-นามสกุลจริง: <span class="text-rose-500 font-bold">*</span></label>
+          <input id="addEmpName" type="text" required placeholder="เช่น นายสมคิด สถิตถาวร หรือ น.ส.พิมพ์ใจ ดีจริง"
+            class="w-full px-3 py-2 text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">ตำแหน่งงาน: <span class="text-rose-500 font-bold">*</span></label>
+            <input id="addEmpRole" type="text" required placeholder="เช่น นิติกร (ระดับ 5)"
+              class="w-full px-3 py-2 text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">ฝ่าย / สำนัก: <span class="text-rose-500 font-bold">*</span></label>
+            <select id="addEmpDepartment" required class="w-full px-3 py-2 text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500">
+              <option value="ผู้บริหาร (ระดับ 11, 10)">👑 ผู้บริหาร (ระดับ 11, 10)</option>
+              <option value="ฝ่ายตรวจสอบภายใน">ฝ่ายตรวจสอบภายใน</option>
+              <option value="สำนักงานเลขานุการผู้อำนวยการ">สำนักงานเลขานุการผู้อำนวยการ</option>
+              <option value="สำนักงานอำนวยการ">สำนักงานอำนวยการ</option>
+              <option value="ฝ่ายบริหารและพัฒนาองค์กร" selected>ฝ่ายบริหารและพัฒนาองค์กร</option>
+              <option value="ฝ่ายบัญชีการเงิน">ฝ่ายบัญชีการเงิน</option>
+              <option value="ฝ่ายยุทธศาสตร์การพัฒนา">ฝ่ายยุทธศาสตร์การพัฒนา</option>
+              <option value="ฝ่ายสินเชื่อ">ฝ่ายสินเชื่อ</option>
+              <option value="ฝ่ายส่งเสริมและโครงการพิเศษ">ฝ่ายส่งเสริมและโครงการพิเศษ</option>
+              <option value="ฝ่ายสะพานปลาและท่าเทียบเรือประมง 1">ฝ่ายสะพานปลาและท่าเทียบเรือประมง 1</option>
+              <option value="ฝ่ายสะพานปลาและท่าเทียบเรือประมง 2">ฝ่ายสะพานปลาและท่าเทียบเรือประมง 2</option>
+              <option value="สำนักงานบริหารหนี้">สำนักงานบริหารหนี้</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">เบอร์โทรศัพท์ / ภายใน:</label>
+            <input id="addEmpPhone" type="text" placeholder="02-211-7300"
+              class="w-full px-3 py-2 text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">อีเมล:</label>
+            <input id="addEmpEmail" type="email" placeholder="example@fishmarket.co.th"
+              class="w-full px-3 py-2 text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">สถานที่ทำงานเริ่มต้น:</label>
+            <select id="addEmpLocation" class="w-full px-3 py-1.5 text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-lg">
+              <option value="WFH">🏠 WFH</option>
+              <option value="Office">🏢 Office</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2 pt-4">
+            <input id="addEmpIsAdmin" type="checkbox" class="w-4 h-4 text-sky-600 rounded border-slate-300 focus:ring-sky-500 cursor-pointer">
+            <label for="addEmpIsAdmin" class="text-xs font-bold text-slate-700 cursor-pointer flex items-center gap-1">
+              <span>👑 ให้สิทธิ์เป็นผู้ดูแลระบบ (Admin)</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="pt-3 border-t border-slate-100 flex items-center gap-2">
+          <button type="button" onclick="closeAddEmployeeModal()" class="flex-1 py-2.5 text-xs rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition cursor-pointer">
+            ยกเลิก
+          </button>
+          <button type="submit" id="submitAddEmpBtn" class="flex-1 py-2.5 text-xs rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer">
+            <i data-lucide="user-check" class="w-4 h-4"></i>
+            <span>ยืนยันเพิ่มพนักงาน</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Admin Edit Employee (แก้ไขข้อมูลพนักงานโดย Admin) -->
+  <div id="adminEditEmployeeModal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white border border-sky-200 rounded-3xl p-5 sm:p-7 max-w-lg w-full shadow-2xl relative my-8 animate-in fade-in zoom-in-95">
+      <div class="flex items-start justify-between mb-4 border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center border border-amber-200 shrink-0">
+            <i data-lucide="user-cog" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">Admin Management</span>
+            <h3 class="text-base sm:text-lg font-bold text-slate-800">แก้ไขข้อมูลพนักงาน</h3>
+          </div>
+        </div>
+        <button onclick="closeAdminEditEmployeeModal()" class="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="adminEditEmployeeForm" onsubmit="submitAdminEditEmployee(event); return false;" class="space-y-3.5">
+        <input type="hidden" id="adminEditEmpId">
+
+        <!-- Avatar Preview Row -->
+        <div class="flex items-center gap-3 p-3 bg-sky-50/60 border border-sky-100 rounded-2xl">
+          <img id="adminEditAvatarPreview" src="/assets/avatar-male.svg" alt="Avatar" class="w-14 h-14 rounded-2xl object-cover ring-2 ring-sky-300">
+          <div class="flex-1 space-y-1">
+            <span class="text-xs font-bold text-slate-700 block">เปลี่ยนรูปถ่ายพนักงาน</span>
+            <div class="flex items-center gap-2">
+              <label class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-white hover:bg-sky-50 text-sky-700 border border-sky-200 cursor-pointer shadow-2xs">
+                <span>เลือกไฟล์รูป...</span>
+                <input type="file" id="adminEditAvatarFile" accept="image/*" class="hidden" onchange="handleAdminAvatarUpload(event)">
+              </label>
+              <button type="button" onclick="resetAdminAvatarToDefault()" class="px-2 py-1 text-[11px] text-slate-500 hover:text-slate-700 bg-slate-100 rounded-lg">
+                รูปตั้งต้น
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">รหัสพนักงาน: <span class="text-rose-500 font-bold">*</span></label>
+            <input id="adminEditEmpCode" type="text" required
+              class="w-full px-3 py-2 text-xs font-bold text-slate-800 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">ชื่อเล่น: <span class="text-rose-500 font-bold">*</span></label>
+            <input id="adminEditNickname" type="text" required
+              class="w-full px-3 py-2 text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">ชื่อ-นามสกุลจริง: <span class="text-rose-500 font-bold">*</span></label>
+          <input id="adminEditName" type="text" required
+            class="w-full px-3 py-2 text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">ตำแหน่งงาน: <span class="text-rose-500 font-bold">*</span></label>
+            <input id="adminEditRole" type="text" required
+              class="w-full px-3 py-2 text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">ฝ่าย / สำนัก: <span class="text-rose-500 font-bold">*</span></label>
+            <select id="adminEditDepartment" required class="w-full px-3 py-2 text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500">
+              <option value="ผู้บริหาร (ระดับ 11, 10)">👑 ผู้บริหาร (ระดับ 11, 10)</option>
+              <option value="ฝ่ายตรวจสอบภายใน">ฝ่ายตรวจสอบภายใน</option>
+              <option value="สำนักงานเลขานุการผู้อำนวยการ">สำนักงานเลขานุการผู้อำนวยการ</option>
+              <option value="สำนักงานอำนวยการ">สำนักงานอำนวยการ</option>
+              <option value="ฝ่ายบริหารและพัฒนาองค์กร">ฝ่ายบริหารและพัฒนาองค์กร</option>
+              <option value="ฝ่ายบัญชีการเงิน">ฝ่ายบัญชีการเงิน</option>
+              <option value="ฝ่ายยุทธศาสตร์การพัฒนา">ฝ่ายยุทธศาสตร์การพัฒนา</option>
+              <option value="ฝ่ายสินเชื่อ">ฝ่ายสินเชื่อ</option>
+              <option value="ฝ่ายส่งเสริมและโครงการพิเศษ">ฝ่ายส่งเสริมและโครงการพิเศษ</option>
+              <option value="ฝ่ายสะพานปลาและท่าเทียบเรือประมง 1">ฝ่ายสะพานปลาและท่าเทียบเรือประมง 1</option>
+              <option value="ฝ่ายสะพานปลาและท่าเทียบเรือประมง 2">ฝ่ายสะพานปลาและท่าเทียบเรือประมง 2</option>
+              <option value="สำนักงานบริหารหนี้">สำนักงานบริหารหนี้</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">เบอร์โทรศัพท์ / ภายใน:</label>
+            <input id="adminEditPhone" type="text"
+              class="w-full px-3 py-2 text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">อีเมลติดต่อ:</label>
+            <input id="adminEditEmail" type="email"
+              class="w-full px-3 py-2 text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">สถานะความพร้อม:</label>
+            <select id="adminEditStatus" class="w-full px-3 py-1.5 text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-lg">
+              <option value="available">🟢 พร้อมทำงาน</option>
+              <option value="busy">🟡 ติดประชุม</option>
+              <option value="break">☕ พักเบรก</option>
+              <option value="idle">⏱️ ไม่อยู่ที่โต๊ะ (Idle)</option>
+              <option value="offline">⚪ เลิกงาน / ออฟไลน์</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2 pt-4">
+            <input id="adminEditIsAdmin" type="checkbox" class="w-4 h-4 text-sky-600 rounded border-slate-300 focus:ring-sky-500 cursor-pointer">
+            <label for="adminEditIsAdmin" class="text-xs font-bold text-slate-700 cursor-pointer flex items-center gap-1">
+              <span>👑 สิทธิ์ผู้ดูแลระบบ (Admin)</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="pt-3 border-t border-slate-100 flex items-center gap-2">
+          <button type="button" onclick="closeAdminEditEmployeeModal()" class="flex-1 py-2.5 text-xs rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition cursor-pointer">
+            ยกเลิก
+          </button>
+          <button type="submit" id="submitAdminEditEmpBtn" class="flex-1 py-2.5 text-xs rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer">
+            <i data-lucide="save" class="w-4 h-4"></i>
+            <span>บันทึกการแก้ไข</span>
           </button>
         </div>
       </form>

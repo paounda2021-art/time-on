@@ -77,22 +77,25 @@ function updateAdminVisibility() {
   const me = getCurrentUser();
   const isAdmin = isUserAdmin(me);
 
-  // 1. Navigation Tab Button: "ตารางบันทึกการลงเวลา (Attendance Log)"
+  // 1. Navigation Tab Buttons: "ตารางบันทึกการลงเวลา (Attendance Log)" & "จัดการพนักงาน (Employee Management)"
   const tabBtnAttendance = document.getElementById('tabBtnAttendance');
+  const tabBtnEmployees = document.getElementById('tabBtnEmployees');
   const navTabsContainer = document.getElementById('navTabsContainer');
-  if (tabBtnAttendance) {
+  if (tabBtnAttendance || tabBtnEmployees) {
     if (isAdmin) {
-      tabBtnAttendance.classList.remove('hidden');
+      if (tabBtnAttendance) tabBtnAttendance.classList.remove('hidden');
+      if (tabBtnEmployees) tabBtnEmployees.classList.remove('hidden');
       if (navTabsContainer) {
-        navTabsContainer.className = 'grid grid-cols-2 gap-2 w-full sm:w-auto';
+        navTabsContainer.className = 'grid grid-cols-1 sm:grid-cols-3 gap-2 w-full sm:w-auto';
       }
     } else {
-      tabBtnAttendance.classList.add('hidden');
+      if (tabBtnAttendance) tabBtnAttendance.classList.add('hidden');
+      if (tabBtnEmployees) tabBtnEmployees.classList.add('hidden');
       if (navTabsContainer) {
         navTabsContainer.className = 'flex items-center gap-2 w-full sm:w-auto';
       }
-      // If regular user is on attendance tab, redirect to presence
-      if (currentTab === 'attendance') {
+      // If regular user is on admin tab, redirect to presence
+      if (currentTab === 'attendance' || currentTab === 'employees') {
         switchMainTab('presence');
       }
     }
@@ -221,6 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initWebSocket();
   setupVisibilityListener();
   setupEventHandlers();
+  initExportDatePickers();
 
   // Immediate initial clock tick
   updateLiveClock();
@@ -420,6 +424,49 @@ function handleServerMessage(msg) {
     if (updatedUser.id !== currentUserId) {
       showToast(`อัปเดตข้อมูลของ ${updatedUser.name} สำเร็จ`, 'info');
     }
+  } else if (msg.type === 'USER_ADDED') {
+    if (msg.user) {
+      const idx = users.findIndex(u => u.id === msg.user.id);
+      if (idx !== -1) users[idx] = msg.user;
+      else users.push(msg.user);
+    }
+    if (msg.activityLog) {
+      logs.unshift(msg.activityLog);
+      if (logs.length > 50) logs.pop();
+    }
+    populateUserSelector();
+    renderAll();
+    if (currentTab === 'employees') renderEmployeesAdminView();
+    showToast(`พนักงานใหม่: ${msg.user?.name || ''} ถูกเพิ่มเข้าสู่ระบบแล้ว 🎉`, 'success');
+  } else if (msg.type === 'USER_UPDATED') {
+    if (msg.user) {
+      const idx = users.findIndex(u => u.id === msg.user.id);
+      if (idx !== -1) users[idx] = msg.user;
+      else users.push(msg.user);
+      if (msg.user.id === currentUserId) {
+        renderMyStatus();
+        updateAdminVisibility();
+      }
+    }
+    if (msg.activityLog) {
+      logs.unshift(msg.activityLog);
+      if (logs.length > 50) logs.pop();
+    }
+    populateUserSelector();
+    renderAll();
+    if (currentTab === 'employees') renderEmployeesAdminView();
+    showToast(`อัปเดตข้อมูลพนักงาน ${msg.user?.name || ''} เรียบร้อยแล้ว ✨`, 'info');
+  } else if (msg.type === 'USER_DELETED') {
+    const deletedId = msg.userId;
+    users = users.filter(u => u.id !== deletedId);
+    if (msg.activityLog) {
+      logs.unshift(msg.activityLog);
+      if (logs.length > 50) logs.pop();
+    }
+    populateUserSelector();
+    renderAll();
+    if (currentTab === 'employees') renderEmployeesAdminView();
+    showToast(`ลบข้อมูลพนักงาน (${msg.deletedUser?.name || deletedId}) ออกจากระบบแล้ว`, 'warning');
   }
 }
 
@@ -507,13 +554,13 @@ function populateUserSelector() {
   });
 }
 
-// Tab Switching (Presence vs Attendance)
+// Tab Switching (Presence vs Attendance vs Employees)
 function switchMainTab(tab) {
   const me = getCurrentUser();
   const isAdmin = isUserAdmin(me);
 
   // If not admin, strictly keep on presence tab
-  if (tab === 'attendance' && !isAdmin) {
+  if ((tab === 'attendance' || tab === 'employees') && !isAdmin) {
     tab = 'presence';
   }
 
@@ -521,24 +568,34 @@ function switchMainTab(tab) {
   localStorage.setItem('timeon_current_tab', tab);
   const viewPresence = document.getElementById('viewPresence');
   const viewAttendance = document.getElementById('viewAttendance');
+  const viewEmployees = document.getElementById('viewEmployees');
   const btnPres = document.getElementById('tabBtnPresence');
   const btnAtt = document.getElementById('tabBtnAttendance');
+  const btnEmp = document.getElementById('tabBtnEmployees');
+
+  // Hide all views first
+  if (viewPresence) viewPresence.classList.add('hidden');
+  if (viewAttendance) viewAttendance.classList.add('hidden');
+  if (viewEmployees) viewEmployees.classList.add('hidden');
+
+  const inactiveBtnClass = 'px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-white hover:bg-sky-50 text-slate-600 border border-slate-200 transition flex items-center justify-center gap-1.5 cursor-pointer';
+  const activeBtnClass = 'px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-sky-600 text-white shadow-sm transition flex items-center justify-center gap-1.5 cursor-pointer';
+
+  if (btnPres) btnPres.className = inactiveBtnClass;
+  if (btnAtt) btnAtt.className = (isAdmin ? '' : 'hidden ') + inactiveBtnClass;
+  if (btnEmp) btnEmp.className = (isAdmin ? '' : 'hidden ') + inactiveBtnClass;
 
   if (tab === 'presence') {
-    viewPresence.classList.remove('hidden');
-    viewAttendance.classList.add('hidden');
-    btnPres.className = 'px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-sky-600 text-white shadow-sm transition flex items-center justify-center gap-1.5';
-    if (btnAtt) {
-      btnAtt.className = (isAdmin ? '' : 'hidden ') + 'px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-white hover:bg-sky-50 text-slate-600 border border-slate-200 transition flex items-center justify-center gap-1.5';
-    }
-  } else {
-    viewPresence.classList.add('hidden');
-    viewAttendance.classList.remove('hidden');
-    btnPres.className = 'px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-white hover:bg-sky-50 text-slate-600 border border-slate-200 transition flex items-center justify-center gap-1.5';
-    if (btnAtt) {
-      btnAtt.className = 'px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-sky-600 text-white shadow-sm transition flex items-center justify-center gap-1.5';
-    }
+    if (viewPresence) viewPresence.classList.remove('hidden');
+    if (btnPres) btnPres.className = activeBtnClass;
+  } else if (tab === 'attendance') {
+    if (viewAttendance) viewAttendance.classList.remove('hidden');
+    if (btnAtt) btnAtt.className = activeBtnClass;
     renderAttendanceView();
+  } else if (tab === 'employees') {
+    if (viewEmployees) viewEmployees.classList.remove('hidden');
+    if (btnEmp) btnEmp.className = activeBtnClass;
+    renderEmployeesAdminView();
   }
   if (window.lucide) window.lucide.createIcons();
 }
@@ -639,6 +696,8 @@ function renderAll() {
   const savedTab = localStorage.getItem('timeon_current_tab') || currentTab || 'presence';
   if (savedTab === 'attendance' && isUserAdmin(getCurrentUser())) {
     switchMainTab('attendance');
+  } else if (savedTab === 'employees' && isUserAdmin(getCurrentUser())) {
+    switchMainTab('employees');
   } else {
     switchMainTab('presence');
   }
@@ -1498,70 +1557,143 @@ function renderAttendancePaginationControls(totalCount) {
   container.appendChild(nextBtn);
 }
 
-// Export Attendance Table to Excel (.xlsx) via backend
-async function exportAttendanceExcel() {
+// Thai Buddhist Era Months & Date Formatter
+const THAI_MONTHS_SHORT = [
+  'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+  'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'
+];
+
+function formatThaiDateBE(dateStr) {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  const y = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10) - 1;
+  const d = parseInt(parts[2], 10);
+  const beYear = y + 543;
+  return `${d} ${THAI_MONTHS_SHORT[m]} ${beYear}`;
+}
+
+function updateThaiDatePreview() {
+  const sEl = document.getElementById('exportStartDate');
+  const eEl = document.getElementById('exportEndDate');
+  const txtEl = document.getElementById('thaiDateRangeText');
+  if (!txtEl || !sEl || !eEl) return;
+
+  const s = sEl.value;
+  const e = eEl.value;
+
+  if (!s && !e) {
+    txtEl.textContent = 'ทั้งหมด (ทุกช่วงเวลา)';
+  } else if (s && !e) {
+    txtEl.textContent = `ตั้งแต่ ${formatThaiDateBE(s)}`;
+  } else if (!s && e) {
+    txtEl.textContent = `ถึง ${formatThaiDateBE(e)}`;
+  } else if (s === e) {
+    txtEl.textContent = `${formatThaiDateBE(s)} (1 วัน)`;
+  } else {
+    txtEl.textContent = `${formatThaiDateBE(s)} - ${formatThaiDateBE(e)}`;
+  }
+}
+
+function setExportPreset(preset) {
+  const sEl = document.getElementById('exportStartDate');
+  const eEl = document.getElementById('exportEndDate');
+  if (!sEl || !eEl) return;
+
+  const now = new Date();
+  const toDateInputStr = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  if (preset === 'today') {
+    const todayStr = toDateInputStr(now);
+    sEl.value = todayStr;
+    eEl.value = todayStr;
+  } else if (preset === '7days') {
+    const past = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
+    sEl.value = toDateInputStr(past);
+    eEl.value = toDateInputStr(now);
+  } else if (preset === 'month') {
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    sEl.value = toDateInputStr(firstDay);
+    eEl.value = toDateInputStr(now);
+  } else if (preset === 'all') {
+    sEl.value = '';
+    eEl.value = '';
+  }
+  updateThaiDatePreview();
+}
+
+function initExportDatePickers() {
+  const sEl = document.getElementById('exportStartDate');
+  const eEl = document.getElementById('exportEndDate');
+  if (sEl && eEl && !sEl.value && !eEl.value) {
+    setExportPreset('month'); // default to current month
+  } else {
+    updateThaiDatePreview();
+  }
+}
+
+// Export Attendance Table (Excel / CSV) with Thai Date Range
+async function exportAttendanceWithDates(format) {
   const me = getCurrentUser();
   if (!isUserHRorAdmin(me)) {
     showToast('เฉพาะเจ้าหน้าที่ฝ่ายบริหารและพัฒนาองค์กร (HR) และผู้ดูแลระบบเท่านั้นที่มีสิทธิ์ส่งออกข้อมูล', 'warning');
     return;
   }
 
-  showToast('📊 กำลังจัดเตรียมไฟล์ Excel (.xlsx)...');
+  const sEl = document.getElementById('exportStartDate');
+  const eEl = document.getElementById('exportEndDate');
+  const startDate = sEl ? sEl.value : '';
+  const endDate = eEl ? eEl.value : '';
+
+  const formatLabel = format === 'xlsx' ? 'Excel (.xlsx)' : 'CSV (.csv)';
+  showToast(`📊 กำลังจัดเตรียมไฟล์ ${formatLabel}...`);
+
   try {
-    const res = await fetch(`/api/attendance/export?format=xlsx&userId=${encodeURIComponent(me.id)}`);
+    let url = `/api/attendance/export?format=${encodeURIComponent(format)}&userId=${encodeURIComponent(me.id)}`;
+    if (startDate) url += `&startDate=${encodeURIComponent(startDate)}`;
+    if (endDate) url += `&endDate=${encodeURIComponent(endDate)}`;
+
+    const res = await fetch(url);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       showToast(err.error || 'ไม่สามารถดาวน์โหลดไฟล์ได้', 'error');
       return;
     }
+
     const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
+    const downloadUrl = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    const today = new Date().toISOString().split('T')[0];
-    a.download = `FMO_Attendance_Timesheet_${today}.xlsx`;
+    a.href = downloadUrl;
+
+    let dateTag = 'All';
+    if (startDate && endDate) dateTag = `${startDate}_to_${endDate}`;
+    else if (startDate) dateTag = `from_${startDate}`;
+    else if (endDate) dateTag = `until_${endDate}`;
+
+    a.download = `FMO_Attendance_${dateTag}.${format}`;
     document.body.appendChild(a);
     a.click();
-    window.URL.revokeObjectURL(url);
+    window.URL.revokeObjectURL(downloadUrl);
     document.body.removeChild(a);
-    showToast('ดาวน์โหลดรายงาน Excel (.xlsx) เรียบร้อยแล้ว 🎉', 'success');
+    showToast(`ดาวน์โหลดรายงาน ${formatLabel} เรียบร้อยแล้ว 🎉`, 'success');
   } catch (err) {
-    console.error('Export Excel failed:', err);
-    showToast('เกิดข้อผิดพลาดในการดาวน์โหลด Excel', 'error');
+    console.error('Export failed:', err);
+    showToast(`เกิดข้อผิดพลาดในการดาวน์โหลด ${formatLabel}`, 'error');
   }
 }
 
-// Export Attendance Table to CSV (.csv) via backend
-async function exportAttendanceCSV() {
-  const me = getCurrentUser();
-  if (!isUserHRorAdmin(me)) {
-    showToast('เฉพาะเจ้าหน้าที่ฝ่ายบริหารและพัฒนาองค์กร (HR) และผู้ดูแลระบบเท่านั้นที่มีสิทธิ์ส่งออกข้อมูล', 'warning');
-    return;
-  }
+async function exportAttendanceExcel() {
+  return exportAttendanceWithDates('xlsx');
+}
 
-  showToast('📄 กำลังจัดเตรียมไฟล์ CSV (.csv)...');
-  try {
-    const res = await fetch(`/api/attendance/export?format=csv&userId=${encodeURIComponent(me.id)}`);
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      showToast(err.error || 'ไม่สามารถดาวน์โหลดไฟล์ได้');
-      return;
-    }
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    const today = new Date().toISOString().split('T')[0];
-    a.download = `FMO_Attendance_Timesheet_${today}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
-    showToast('ดาวน์โหลดรายงาน CSV (.csv) เรียบร้อยแล้ว 🎉');
-  } catch (err) {
-    console.error('Export CSV failed:', err);
-    showToast('เกิดข้อผิดพลาดในการดาวน์โหลด CSV');
-  }
+async function exportAttendanceCSV() {
+  return exportAttendanceWithDates('csv');
 }
 
 // Render Activity Logs
@@ -2450,5 +2582,424 @@ async function saveUserProfile(event) {
       saveBtn.innerHTML = `<i data-lucide="save" class="w-3.5 h-3.5"></i><span>บันทึกข้อมูลส่วนตัว</span>`;
       if (window.lucide) window.lucide.createIcons();
     }
+  }
+}
+
+// ==========================================
+// EMPLOYEE MANAGEMENT (ADMIN CRUD)
+// ==========================================
+
+let currentEditAdminAvatarBase64 = null;
+
+function renderEmployeesAdminView() {
+  const me = getCurrentUser();
+  if (!isUserAdmin(me)) return;
+
+  const totalEl = document.getElementById('adminEmpTotalCount');
+  const adminEl = document.getElementById('adminEmpAdminCount');
+  const regularEl = document.getElementById('adminEmpRegularCount');
+  const tableBody = document.getElementById('adminEmployeesTableBody');
+
+  const totalCount = users.length;
+  const adminCount = users.filter(u => isUserAdmin(u)).length;
+  const regularCount = totalCount - adminCount;
+
+  if (totalEl) totalEl.textContent = totalCount;
+  if (adminEl) adminEl.textContent = adminCount;
+  if (regularEl) regularEl.textContent = regularCount;
+
+  if (!tableBody) return;
+
+  const searchInput = document.getElementById('adminEmpSearchInput');
+  const deptFilter = document.getElementById('adminEmpDeptFilter');
+  const query = (searchInput?.value || '').toLowerCase().trim();
+  const selectedDept = deptFilter?.value || 'ALL';
+
+  const filteredUsers = users.filter(u => {
+    if (selectedDept !== 'ALL' && u.department !== selectedDept) {
+      return false;
+    }
+    if (!query) return true;
+    const qName = (u.name || '').toLowerCase();
+    const qNick = (u.nickname || '').toLowerCase();
+    const qCode = (u.empCode || '').toLowerCase();
+    const qRole = (u.role || '').toLowerCase();
+    const qDept = (u.department || '').toLowerCase();
+    const qPhone = (u.phone || '').toLowerCase();
+    return qName.includes(query) || qNick.includes(query) || qCode.includes(query) || qRole.includes(query) || qDept.includes(query) || qPhone.includes(query);
+  });
+
+  if (filteredUsers.length === 0) {
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="7" class="py-12 text-center text-slate-400">
+          <div class="flex flex-col items-center justify-center gap-2">
+            <i data-lucide="users" class="w-8 h-8 text-slate-300"></i>
+            <span class="text-xs font-semibold">ไม่พบข้อมูลพนักงานที่ตรงกับเงื่อนไขการค้นหา</span>
+          </div>
+        </td>
+      </tr>
+    `;
+    if (window.lucide) window.lucide.createIcons();
+    return;
+  }
+
+  tableBody.innerHTML = filteredUsers.map((u, idx) => {
+    const isSelf = u.id === me.id;
+    const isAdmin = isUserAdmin(u);
+    const meta = STATUS_META[u.status] || STATUS_META.available;
+    const avatarUrl = getUserAvatar(u);
+    const isExecutive = (u.department || '').includes('ผู้บริหาร');
+
+    const deptBadgeClass = isExecutive
+      ? 'bg-amber-100 text-amber-900 border-amber-300 font-bold'
+      : 'bg-sky-50 text-sky-800 border-sky-200 font-medium';
+
+    return `
+      <tr class="hover:bg-sky-50/50 transition border-b border-slate-100 text-xs">
+        <td class="p-3 font-semibold">
+          <div class="flex items-center gap-2.5">
+            <span class="text-slate-400 font-mono text-[11px] w-6 shrink-0">${idx + 1}</span>
+            <img src="${avatarUrl}" alt="${u.name}" class="w-8 h-8 rounded-xl object-cover border border-slate-200 shrink-0">
+            <div>
+              <div class="font-bold text-slate-800 flex items-center gap-1.5 flex-wrap">
+                <span>${u.name}</span>
+                ${u.nickname ? `<span class="text-sky-700 font-bold">(${u.nickname})</span>` : ''}
+                ${isAdmin ? '<span class="px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 text-[10px] font-bold border border-amber-300">👑 Admin</span>' : ''}
+                ${isSelf ? '<span class="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 text-[10px] font-bold">(คุณ)</span>' : ''}
+              </div>
+              <div class="text-[11px] text-slate-400">${u.email || '-'}</div>
+            </div>
+          </div>
+        </td>
+        <td class="p-3">
+          <span class="font-mono font-bold text-sky-800 bg-sky-50/80 px-2 py-0.5 rounded border border-sky-200 text-[11px]">
+            ${u.empCode || '-'}
+          </span>
+        </td>
+        <td class="p-3 font-medium text-slate-700">
+          ${u.role || '-'}
+        </td>
+        <td class="p-3">
+          <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] border ${deptBadgeClass}">
+            ${u.department || '-'}
+          </span>
+        </td>
+        <td class="p-3 text-slate-600 text-[11px]">
+          ${u.phone ? `<div>📞 ${u.phone}</div>` : '<span class="text-slate-400">-</span>'}
+        </td>
+        <td class="p-3">
+          <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full ${meta.dotColor || 'bg-slate-400'}"></span>
+            <span class="font-bold text-slate-700 text-[11px]">${meta.label || 'พร้อมทำงาน'}</span>
+          </div>
+          <span class="text-[10px] text-slate-400 font-mono">${u.attendance?.location || 'WFH'}</span>
+        </td>
+        <td class="p-3 text-center">
+          <div class="flex items-center justify-center gap-1.5">
+            <button onclick="openAdminEditEmployeeModal('${u.id}')" title="แก้ไขข้อมูลพนักงาน" class="px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700 font-bold border border-sky-200 transition flex items-center gap-1 cursor-pointer">
+              <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+              <span>แก้ไข</span>
+            </button>
+            ${isSelf ? `
+              <span class="px-2 py-1 text-[11px] text-slate-400 font-medium bg-slate-100 rounded-lg">ตัวเอง</span>
+            ` : `
+              <button onclick="confirmDeleteEmployee('${u.id}')" title="ลบข้อมูลพนักงานออกจากฐานข้อมูล" class="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold border border-rose-200 transition flex items-center gap-1 cursor-pointer">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                <span>ลบ</span>
+              </button>
+            `}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function filterEmployeesAdminTable() {
+  renderEmployeesAdminView();
+}
+
+// Add Employee Modal Handlers
+function openAddEmployeeModal() {
+  const me = getCurrentUser();
+  if (!isUserAdmin(me)) {
+    showToast('เฉพาะผู้ดูแลระบบเท่านั้นที่สามารถเพิ่มพนักงานได้', 'warning');
+    return;
+  }
+  const form = document.getElementById('addEmployeeForm');
+  if (form) form.reset();
+  const modal = document.getElementById('addEmployeeModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+  setTimeout(() => document.getElementById('addEmpCode')?.focus(), 100);
+}
+
+function closeAddEmployeeModal() {
+  const modal = document.getElementById('addEmployeeModal');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+}
+
+async function submitAddEmployee(e) {
+  if (e) e.preventDefault();
+  const me = getCurrentUser();
+  if (!isUserAdmin(me)) {
+    showToast('เฉพาะผู้ดูแลระบบเท่านั้นที่มีสิทธิ์ดำเนินการ', 'warning');
+    return;
+  }
+
+  const empCode = (document.getElementById('addEmpCode')?.value || '').trim();
+  const nickname = (document.getElementById('addEmpNickname')?.value || '').trim();
+  const name = (document.getElementById('addEmpName')?.value || '').trim();
+  const role = (document.getElementById('addEmpRole')?.value || '').trim();
+  const department = document.getElementById('addEmpDepartment')?.value || 'ฝ่ายบริหารและพัฒนาองค์กร';
+  const phone = (document.getElementById('addEmpPhone')?.value || '').trim();
+  const email = (document.getElementById('addEmpEmail')?.value || '').trim();
+  const location = document.getElementById('addEmpLocation')?.value || 'WFH';
+  const isAdmin = document.getElementById('addEmpIsAdmin')?.checked || false;
+
+  if (!empCode || !name || !nickname || !role) {
+    showToast('กรุณากรอกข้อมูลที่จำเป็น (*) ให้ครบถ้วน', 'warning');
+    return;
+  }
+
+  const submitBtn = document.getElementById('submitAddEmpBtn');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `<span>กำลังบันทึก...</span>`;
+  }
+
+  try {
+    const res = await fetch('/api/admin/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        adminUserId: me.id,
+        empCode,
+        name,
+        nickname,
+        role,
+        department,
+        phone,
+        email,
+        location,
+        isAdmin
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      showToast(data.error || 'ไม่สามารถเพิ่มพนักงานใหม่ได้', 'error');
+      return;
+    }
+
+    closeAddEmployeeModal();
+    showToast(`เพิ่มพนักงานใหม่ ${name} สำเร็จแล้ว 🎉`, 'success');
+  } catch (err) {
+    console.error('submitAddEmployee error:', err);
+    showToast('เกิดข้อผิดพลาดในการเพิ่มพนักงาน', 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `<i data-lucide="user-check" class="w-4 h-4"></i><span>ยืนยันเพิ่มพนักงาน</span>`;
+      if (window.lucide) window.lucide.createIcons();
+    }
+  }
+}
+
+// Edit Employee Modal Handlers
+function openAdminEditEmployeeModal(userId) {
+  const me = getCurrentUser();
+  if (!isUserAdmin(me)) {
+    showToast('เฉพาะผู้ดูแลระบบเท่านั้นที่สามารถแก้ไขข้อมูลพนักงานได้', 'warning');
+    return;
+  }
+
+  const u = users.find(x => x.id === userId);
+  if (!u) {
+    showToast('ไม่พบข้อมูลพนักงาน', 'error');
+    return;
+  }
+
+  document.getElementById('adminEditEmpId').value = u.id;
+  document.getElementById('adminEditEmpCode').value = u.empCode || '';
+  document.getElementById('adminEditNickname').value = u.nickname || '';
+  document.getElementById('adminEditName').value = u.name || '';
+  document.getElementById('adminEditRole').value = u.role || '';
+  document.getElementById('adminEditDepartment').value = u.department || 'ฝ่ายบริหารและพัฒนาองค์กร';
+  document.getElementById('adminEditPhone').value = u.phone || '';
+  document.getElementById('adminEditEmail').value = u.email || '';
+  document.getElementById('adminEditStatus').value = u.status || 'available';
+  document.getElementById('adminEditIsAdmin').checked = isUserAdmin(u);
+
+  currentEditAdminAvatarBase64 = u.avatar || null;
+  const avatarPreview = document.getElementById('adminEditAvatarPreview');
+  if (avatarPreview) {
+    avatarPreview.src = getUserAvatar(u);
+  }
+
+  const modal = document.getElementById('adminEditEmployeeModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+}
+
+function closeAdminEditEmployeeModal() {
+  const modal = document.getElementById('adminEditEmployeeModal');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+  currentEditAdminAvatarBase64 = null;
+}
+
+function handleAdminAvatarUpload(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+
+  if (file.size > 2 * 1024 * 1024) {
+    showToast('ไฟล์รูปภาพมีขนาดใหญ่เกิน 2MB กรุณาเลือกไฟล์ขนาดเล็กลง', 'warning');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    const dataUrl = evt.target.result;
+    currentEditAdminAvatarBase64 = dataUrl;
+    const preview = document.getElementById('adminEditAvatarPreview');
+    if (preview) preview.src = dataUrl;
+    showToast('อัปโหลดตัวอย่างรูปใหม่เรียบร้อย', 'info');
+  };
+  reader.readAsDataURL(file);
+}
+
+function resetAdminAvatarToDefault() {
+  const name = document.getElementById('adminEditName')?.value || '';
+  currentEditAdminAvatarBase64 = '';
+  const preview = document.getElementById('adminEditAvatarPreview');
+  if (preview) {
+    preview.src = getDefaultAvatarByName(name);
+  }
+  showToast('รีเซ็ตรูปภาพเป็นแบบตั้งต้นแล้ว', 'info');
+}
+
+async function submitAdminEditEmployee(e) {
+  if (e) e.preventDefault();
+  const me = getCurrentUser();
+  if (!isUserAdmin(me)) {
+    showToast('เฉพาะผู้ดูแลระบบเท่านั้นที่มีสิทธิ์ดำเนินการ', 'warning');
+    return;
+  }
+
+  const id = document.getElementById('adminEditEmpId')?.value;
+  const empCode = (document.getElementById('adminEditEmpCode')?.value || '').trim();
+  const nickname = (document.getElementById('adminEditNickname')?.value || '').trim();
+  const name = (document.getElementById('adminEditName')?.value || '').trim();
+  const role = (document.getElementById('adminEditRole')?.value || '').trim();
+  const department = document.getElementById('adminEditDepartment')?.value || 'ฝ่ายบริหารและพัฒนาองค์กร';
+  const phone = (document.getElementById('adminEditPhone')?.value || '').trim();
+  const email = (document.getElementById('adminEditEmail')?.value || '').trim();
+  const status = document.getElementById('adminEditStatus')?.value || 'available';
+  const isAdmin = document.getElementById('adminEditIsAdmin')?.checked || false;
+
+  if (!id || !empCode || !name || !nickname || !role) {
+    showToast('กรุณากรอกข้อมูลที่จำเป็น (*) ให้ครบถ้วน', 'warning');
+    return;
+  }
+
+  const submitBtn = document.getElementById('submitAdminEditEmpBtn');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `<span>กำลังบันทึก...</span>`;
+  }
+
+  try {
+    const payload = {
+      adminUserId: me.id,
+      empCode,
+      name,
+      nickname,
+      role,
+      department,
+      phone,
+      email,
+      status,
+      isAdmin
+    };
+    if (currentEditAdminAvatarBase64 !== null) {
+      payload.avatar = currentEditAdminAvatarBase64;
+    }
+
+    const res = await fetch(`/api/admin/users/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      showToast(data.error || 'ไม่สามารถแก้ไขข้อมูลพนักงานได้', 'error');
+      return;
+    }
+
+    closeAdminEditEmployeeModal();
+    showToast(`อัปเดตข้อมูลพนักงาน ${name} สำเร็จแล้ว ✨`, 'success');
+  } catch (err) {
+    console.error('submitAdminEditEmployee error:', err);
+    showToast('เกิดข้อผิดพลาดในการบันทึกข้อมูล', 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `<i data-lucide="save" class="w-4 h-4"></i><span>บันทึกการแก้ไข</span>`;
+      if (window.lucide) window.lucide.createIcons();
+    }
+  }
+}
+
+// Delete Employee Handler
+async function confirmDeleteEmployee(userId) {
+  const me = getCurrentUser();
+  if (!isUserAdmin(me)) {
+    showToast('เฉพาะผู้ดูแลระบบเท่านั้นที่สามารถลบพนักงานได้', 'warning');
+    return;
+  }
+
+  if (userId === me.id) {
+    showToast('ไม่สามารถลบบัญชีผู้ดูแลระบบของตัวเองได้', 'error');
+    return;
+  }
+
+  const target = users.find(u => u.id === userId);
+  if (!target) {
+    showToast('ไม่พบข้อมูลพนักงานที่ต้องการลบ', 'error');
+    return;
+  }
+
+  const confirmMsg = `⚠️ คุณต้องการลบข้อมูลพนักงานใช่หรือไม่?\n\nรหัส: ${target.empCode || '-'}\nชื่อ: ${target.name} (${target.nickname})\nตำแหน่ง: ${target.role || '-'}\nฝ่าย: ${target.department || '-'}\n\n* ข้อมูลจะถูกลบออกจากฐานข้อมูล SQLite ทันทีและไม่สามารถกู้คืนได้`;
+  if (!window.confirm(confirmMsg)) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}?adminUserId=${encodeURIComponent(me.id)}`, {
+      method: 'DELETE'
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      showToast(data.error || 'ไม่สามารถลบข้อมูลพนักงานได้', 'error');
+      return;
+    }
+    showToast(`ลบข้อมูลพนักงาน ${target.name} เรียบร้อยแล้ว`, 'warning');
+  } catch (err) {
+    console.error('confirmDeleteEmployee error:', err);
+    showToast('เกิดข้อผิดพลาดในการลบพนักงาน', 'error');
   }
 }

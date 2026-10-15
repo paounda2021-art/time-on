@@ -1788,9 +1788,224 @@ app.post('/api/nudges', (req, res) => {
   res.json({ success: true, nudge: newNudge });
 });
 
+// ============================================================
+// ADMIN EMPLOYEE MANAGEMENT API (เพิ่ม / แก้ไข / ลบ พนักงาน)
+// ============================================================
+
+// 1. Add Employee (เพิ่มพนักงานใหม่)
+app.post('/api/admin/users', (req, res) => {
+  const { adminId, adminUserId, empCode, name, nickname, role, department, phone, email, isAdmin, attendanceLocation, location } = req.body;
+  const callerId = adminId || adminUserId;
+  const adminUser = db.users.find(u => u.id === callerId || u.empCode === callerId);
+  if (!adminUser || !isUserHRorAdmin(adminUser)) {
+    return res.status(403).json({ error: 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่มีสิทธิ์เพิ่มพนักงาน' });
+  }
+
+  const cleanCode = (empCode || '').trim();
+  const cleanName = (name || '').trim();
+  const cleanNick = (nickname || '').trim();
+  const cleanRole = (role || '').trim();
+  const cleanDept = (department || '').trim();
+  const cleanPhone = (phone || '').trim() || '02-211-7300';
+  const cleanEmail = (email || '').trim() || `${cleanNick ? cleanNick.toLowerCase() : 'user'}.${cleanCode.slice(-4)}@fishmarket.co.th`;
+
+  if (!cleanCode || !cleanName || !cleanRole || !cleanDept) {
+    return res.status(400).json({ error: 'กรุณากรอกรหัสพนักงาน ชื่อ-สกุล ตำแหน่ง และฝ่ายงาน ให้ครบถ้วน' });
+  }
+
+  const existingCode = db.users.find(u => u.empCode === cleanCode);
+  if (existingCode) {
+    return res.status(400).json({ error: `รหัสพนักงาน "${cleanCode}" มีอยู่ในระบบแล้ว (${existingCode.name})` });
+  }
+
+  // Generate unique ID
+  const nextNum = Math.max(...db.users.map(u => parseInt(u.id.replace(/\D/g, '') || '0', 10)), 0) + 1;
+  const newId = `u${nextNum}`;
+  const now = Date.now();
+  const avatar = req.body.avatar || dbStorage.getDefaultAvatarByName(cleanName);
+
+  const newUser = {
+    id: newId,
+    empCode: cleanCode,
+    name: cleanName,
+    nickname: cleanNick,
+    role: cleanRole,
+    department: cleanDept,
+    avatar,
+    phone: cleanPhone,
+    email: cleanEmail,
+    status: 'available',
+    statusChangedAt: now,
+    note: 'พร้อมปฏิบัติงาน',
+    breakUntil: null,
+    lastHeartbeat: now,
+    isTabActive: true,
+    isAdmin: !!isAdmin,
+    isHR: cleanDept === 'ฝ่ายบริหารและพัฒนาองค์กร',
+    attendance: {
+      status: 'not_checked_in',
+      location: attendanceLocation || 'WFH',
+      checkInTime: null,
+      checkInTimestamp: null,
+      checkOutTime: null,
+      checkOutTimestamp: null,
+      note: 'ยังไม่ลงเวลา'
+    }
+  };
+
+  dbStorage.saveUser(newUser);
+  usersCache.push(newUser);
+
+  const logEntry = {
+    id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    userId: newUser.id,
+    userName: newUser.name,
+    type: 'admin_add_user',
+    fromStatus: '',
+    toStatus: 'available',
+    note: `เพิ่มพนักงานใหม่: ${newUser.name} (${newUser.department}) โดย ${adminUser.name}`,
+    timestamp: now
+  };
+  db.activityLogs.unshift(logEntry);
+  if (db.activityLogs.length > 50) db.activityLogs.pop();
+
+  broadcast({
+    type: 'USER_ADDED',
+    user: newUser,
+    users: db.users,
+    log: logEntry
+  });
+
+  res.json({ success: true, user: newUser, message: `เพิ่มพนักงาน ${newUser.name} เรียบร้อยแล้ว` });
+});
+
+// 2. Edit Employee (แก้ไขข้อมูลพนักงานโดย Admin)
+app.put('/api/admin/users/:id', (req, res) => {
+  const { id } = req.params;
+  const { adminId, adminUserId, empCode, name, nickname, role, department, phone, email, isAdmin, status, attendanceLocation, avatar } = req.body;
+  const callerId = adminId || adminUserId;
+  const adminUser = db.users.find(u => u.id === callerId || u.empCode === callerId);
+  if (!adminUser || !isUserHRorAdmin(adminUser)) {
+    return res.status(403).json({ error: 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่มีสิทธิ์แก้ไขข้อมูลพนักงาน' });
+  }
+
+  const user = db.users.find(u => u.id === id);
+  if (!user) return res.status(404).json({ error: 'ไม่พบพนักงานที่ต้องการแก้ไข' });
+
+  const cleanCode = (empCode || '').trim();
+  const cleanName = (name || '').trim();
+  const cleanNick = (nickname || '').trim();
+  const cleanRole = (role || '').trim();
+  const cleanDept = (department || '').trim();
+  const cleanPhone = (phone || '').trim();
+  const cleanEmail = (email || '').trim();
+
+  if (cleanCode && cleanCode !== user.empCode) {
+    const dup = db.users.find(u => u.empCode === cleanCode && u.id !== id);
+    if (dup) return res.status(400).json({ error: `รหัสพนักงาน "${cleanCode}" มีอยู่ในระบบแล้ว (${dup.name})` });
+    user.empCode = cleanCode;
+  }
+
+  if (cleanName) user.name = cleanName;
+  if (cleanNick !== undefined) user.nickname = cleanNick;
+  if (cleanRole) user.role = cleanRole;
+  if (cleanDept) user.department = cleanDept;
+  if (cleanPhone) user.phone = cleanPhone;
+  if (cleanEmail) user.email = cleanEmail;
+  if (isAdmin !== undefined) user.isAdmin = !!isAdmin;
+  if (cleanDept === 'ฝ่ายบริหารและพัฒนาองค์กร') user.isHR = true;
+  if (status && ['available', 'busy', 'break', 'idle', 'offline'].includes(status)) {
+    user.status = status;
+    user.statusChangedAt = Date.now();
+  }
+  if (attendanceLocation && user.attendance) {
+    user.attendance.location = attendanceLocation;
+  }
+
+  if (avatar && avatar.startsWith('data:image/')) {
+    user.avatar = dbStorage.saveAvatarFile(user.empCode || user.id, avatar);
+  } else if (avatar) {
+    user.avatar = avatar;
+  }
+
+  dbStorage.saveUser(user);
+  const cacheIdx = usersCache.findIndex(u => u.id === user.id);
+  if (cacheIdx !== -1) usersCache[cacheIdx] = user;
+
+  const now = Date.now();
+  const logEntry = {
+    id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    userId: user.id,
+    userName: user.name,
+    type: 'admin_edit_user',
+    fromStatus: user.status,
+    toStatus: user.status,
+    note: `แก้ไขข้อมูลพนักงาน: ${user.name} โดยผู้ดูแลระบบ (${adminUser.name})`,
+    timestamp: now
+  };
+  db.activityLogs.unshift(logEntry);
+  if (db.activityLogs.length > 50) db.activityLogs.pop();
+
+  broadcast({
+    type: 'USER_UPDATED',
+    user,
+    users: db.users,
+    log: logEntry
+  });
+
+  res.json({ success: true, user, message: `อัปเดตข้อมูลของ ${user.name} สำเร็จแล้ว` });
+});
+
+// 3. Delete Employee (ลบพนักงานโดย Admin)
+app.delete('/api/admin/users/:id', (req, res) => {
+  const { id } = req.params;
+  const callerId = req.query.adminId || req.query.adminUserId || req.body?.adminId || req.body?.adminUserId;
+  const adminUser = db.users.find(u => u.id === callerId || u.empCode === callerId);
+  if (!adminUser || !isUserHRorAdmin(adminUser)) {
+    return res.status(403).json({ error: 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่มีสิทธิ์ลบพนักงาน' });
+  }
+
+  const user = db.users.find(u => u.id === id);
+  if (!user) return res.status(404).json({ error: 'ไม่พบพนักงานที่ต้องการลบ' });
+
+  if (user.id === adminUser.id || user.empCode === adminUser.empCode) {
+    return res.status(400).json({ error: 'ไม่สามารถลบบัญชีผู้ดูแลระบบของตนเองที่กำลังล็อกอินอยู่ได้' });
+  }
+
+  const deletedName = user.name;
+  const deletedDept = user.department;
+
+  dbStorage.deleteUser(id);
+  usersCache = usersCache.filter(u => u.id !== id);
+
+  const now = Date.now();
+  const logEntry = {
+    id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    userId: id,
+    userName: deletedName,
+    type: 'admin_delete_user',
+    fromStatus: user.status,
+    toStatus: 'offline',
+    note: `ลบพนักงาน: ${deletedName} (${deletedDept}) โดยผู้ดูแลระบบ (${adminUser.name})`,
+    timestamp: now
+  };
+  db.activityLogs.unshift(logEntry);
+  if (db.activityLogs.length > 50) db.activityLogs.pop();
+
+  broadcast({
+    type: 'USER_DELETED',
+    userId: id,
+    userName: deletedName,
+    users: db.users,
+    log: logEntry
+  });
+
+  res.json({ success: true, message: `ลบข้อมูลของ ${deletedName} เรียบร้อยแล้ว` });
+});
+
 // Export Attendance Report (Excel .xlsx / CSV .csv) - Restricted to HR & Admin
 app.get('/api/attendance/export', (req, res) => {
-  const { format, userId } = req.query;
+  const { format, userId, startDate, endDate } = req.query;
 
   // Permission check: if userId supplied, ensure HR or Admin
   if (userId) {
@@ -1803,30 +2018,60 @@ app.get('/api/attendance/export', (req, res) => {
   }
 
   const now = Date.now();
-  const fileDateStr = new Date().toISOString().split('T')[0];
+  let startTs = null;
+  let endTs = null;
+  if (startDate) {
+    const [sy, sm, sd] = startDate.split('-').map(Number);
+    startTs = new Date(sy, sm - 1, sd, 0, 0, 0, 0).getTime();
+  }
+  if (endDate) {
+    const [ey, em, ed] = endDate.split('-').map(Number);
+    endTs = new Date(ey, em - 1, ed, 23, 59, 59, 999).getTime();
+  }
+
+  // Format Thai dates (BE year + 543)
+  function toThaiDateStr(d) {
+    const date = d ? new Date(d) : new Date();
+    return date.toLocaleDateString('th-TH', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      timeZone: 'Asia/Bangkok'
+    });
+  }
+
+  const rangeLabelThai = (startDate && endDate)
+    ? `${toThaiDateStr(startTs)} ถึง ${toThaiDateStr(endTs)} (พ.ศ.)`
+    : (startDate ? `ตั้งแต่ ${toThaiDateStr(startTs)} (พ.ศ.)` : (endDate ? `จนถึง ${toThaiDateStr(endTs)} (พ.ศ.)` : `ข้อมูลล่าสุด วันที่ ${toThaiDateStr(now)} (พ.ศ.)`));
+
+  const fileDateTag = (startDate && endDate)
+    ? `${startDate}_to_${endDate}`
+    : (startDate || endDate || new Date().toISOString().split('T')[0]);
+
+  // Query logs for the selected range if range is specified
+  let logsForExport = [];
+  if (startTs !== null && endTs !== null) {
+    logsForExport = dbStorage.getAttendanceLogsByDateRange(startTs, endTs);
+  } else if (startTs !== null) {
+    logsForExport = dbStorage.getAttendanceLogsByDateRange(startTs, Date.now());
+  } else if (endTs !== null) {
+    logsForExport = dbStorage.getAttendanceLogsByDateRange(0, endTs);
+  } else {
+    logsForExport = db.attendanceLogs ? db.attendanceLogs.slice(0, 500) : [];
+  }
 
   // Prepare Timesheet Data
   const timesheetData = db.users.map((u, idx) => {
     const att = u.attendance || { status: 'not_checked_in', location: 'WFH' };
 
     const workDate = att.checkInTimestamp
-      ? new Date(att.checkInTimestamp).toLocaleDateString('th-TH', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          timeZone: 'Asia/Bangkok'
-        })
-      : new Date(now).toLocaleDateString('th-TH', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          timeZone: 'Asia/Bangkok'
-        });
+      ? toThaiDateStr(att.checkInTimestamp)
+      : toThaiDateStr(now);
 
     let hoursStr = '-';
     if (att.checkInTimestamp) {
-      const endTs = att.checkOutTimestamp || now;
-      const diffMs = Math.max(0, endTs - att.checkInTimestamp);
+      const endTsAtt = att.checkOutTimestamp || now;
+      const diffMs = Math.max(0, endTsAtt - att.checkInTimestamp);
       const mins = Math.floor(diffMs / 60000);
       const hrs = Math.floor(mins / 60);
       hoursStr = `${hrs} ชม. ${mins % 60} นาที`;
@@ -1844,6 +2089,7 @@ app.get('/api/attendance/export', (req, res) => {
 
     return {
       'ลำดับ': idx + 1,
+      'ช่วงวันที่รายงาน': rangeLabelThai,
       'วันที่ปฏิบัติงาน': workDate,
       'รหัสพนักงาน': u.empCode || '-',
       'ชื่อ - สกุล': u.name,
@@ -1862,17 +2108,13 @@ app.get('/api/attendance/export', (req, res) => {
   });
 
   // Prepare Action Logs Data
-  const logsData = (db.attendanceLogs || []).map((log, idx) => {
+  const logsData = logsForExport.map((log, idx) => {
     const u = db.users.find(usr => usr.id === log.userId) || {};
-    const logDate = new Date(log.timestamp || now).toLocaleDateString('th-TH', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      timeZone: 'Asia/Bangkok'
-    });
+    const logDate = toThaiDateStr(log.timestamp || now);
     const dateFormatted = new Date(log.timestamp || now).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
     return {
       'ลำดับ': idx + 1,
+      'ช่วงวันที่รายงาน': rangeLabelThai,
       'วันที่ปฏิบัติงาน': logDate,
       'รหัสบันทึก': log.id,
       'รหัสพนักงาน': u.empCode || '-',
@@ -1899,7 +2141,7 @@ app.get('/api/attendance/export', (req, res) => {
     });
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="FMO_Attendance_Timesheet_${fileDateStr}.csv"`);
+    res.setHeader('Content-Disposition', `attachment; filename="FMO_Attendance_${fileDateTag}.csv"`);
     return res.send(csv);
   }
 
@@ -1910,6 +2152,7 @@ app.get('/api/attendance/export', (req, res) => {
   const wsTimesheet = XLSX.utils.json_to_sheet(timesheetData);
   wsTimesheet['!cols'] = [
     { wch: 8 },  // ลำดับ
+    { wch: 30 }, // ช่วงวันที่รายงาน
     { wch: 16 }, // วันที่ปฏิบัติงาน
     { wch: 14 }, // รหัสพนักงาน
     { wch: 28 }, // ชื่อ - สกุล
@@ -1932,6 +2175,7 @@ app.get('/api/attendance/export', (req, res) => {
     const wsLogs = XLSX.utils.json_to_sheet(logsData);
     wsLogs['!cols'] = [
       { wch: 8 },  // ลำดับ
+      { wch: 30 }, // ช่วงวันที่รายงาน
       { wch: 16 }, // วันที่ปฏิบัติงาน
       { wch: 22 }, // รหัสบันทึก
       { wch: 14 }, // รหัสพนักงาน
@@ -1948,7 +2192,7 @@ app.get('/api/attendance/export', (req, res) => {
 
   const xlsxBuffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  res.setHeader('Content-Disposition', `attachment; filename="FMO_Attendance_Timesheet_${fileDateStr}.xlsx"`);
+  res.setHeader('Content-Disposition', `attachment; filename="FMO_Attendance_${fileDateTag}.xlsx"`);
   return res.send(xlsxBuffer);
 });
 
