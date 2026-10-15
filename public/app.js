@@ -798,7 +798,7 @@ function renderMyStatus() {
   const checkInText = document.getElementById('myCheckInTimeText');
   const checkOutText = document.getElementById('myCheckOutTimeText');
 
-  locSelect.value = att.location || 'WFH';
+  if (locSelect) locSelect.value = att.location || 'WFH';
   checkInText.textContent = att.checkInTime ? `${att.checkInTime} น.` : '-';
   checkOutText.textContent = att.checkOutTime ? `${att.checkOutTime} น.` : '-';
 
@@ -950,7 +950,7 @@ function handleAttendanceButtonClick() {
   if (!me) return;
 
   const att = me.attendance || { status: 'not_checked_in' };
-  const loc = document.getElementById('workLocationSelect').value;
+  const loc = document.getElementById('workLocationSelect')?.value || 'WFH';
 
   if (att.status === 'checked_in') {
     showConfirmToast('คุณต้องการลงเวลาเลิกงาน (Check-Out) ตอนนี้ใช่หรือไม่?', () => {

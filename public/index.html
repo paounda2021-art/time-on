@@ -3,21 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TimeOn - องค์การสะพานปลา</title>
+  <title>TimeOn-WFH-องค์การสะพานปลา</title>
   <link rel="icon" href="/assets/logo.jpg" type="image/jpeg">
 
   <!-- Open Graph / LINE / Facebook Clean Preview -->
   <meta name="description" content="ระบบลงเวลาปฏิบัติงาน">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="TimeOn">
-  <meta property="og:title" content="TimeOn - องค์การสะพานปลา">
+  <meta property="og:title" content="TimeOn-WFH-องค์การสะพานปลา">
   <meta property="og:description" content="ระบบลงเวลาปฏิบัติงาน">
   <meta property="og:url" content="https://timeon.fishmarket.co.th">
   <meta property="og:image" content="https://timeon.fishmarket.co.th/assets/logo.jpg">
 
   <!-- Twitter Meta -->
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="TimeOn - องค์การสะพานปลา">
+  <meta name="twitter:title" content="TimeOn-WFH-องค์การสะพานปลา">
   <meta name="twitter:description" content="ระบบลงเวลาปฏิบัติงาน">
   <meta name="twitter:image" content="https://timeon.fishmarket.co.th/assets/logo.jpg">
 
@@ -205,18 +205,14 @@
             </div>
           </div>
 
-          <!-- Card Action Controls: Location Select + Quick WFH + Check-In/Out Button -->
+          <!-- Card Action Controls: Quick WFH + Check-In/Out Button -->
           <div class="flex flex-col sm:flex-row items-stretch gap-2 pt-1">
-            <!-- Location Select -->
-            <select id="workLocationSelect" onchange="handleWorkLocationChange(this.value)" class="bg-white border border-sky-200 text-xs font-bold rounded-xl px-3 py-2 text-slate-700 outline-none shadow-xs cursor-pointer shrink-0" title="เลือกสถานที่ปฏิบัติงาน">
-              <option value="WFH">🏠 WFH</option>
-              <option value="Office">🏢 Office</option>
-            </select>
+            <input type="hidden" id="workLocationSelect" value="WFH">
 
             <!-- Quick 1-Click WFH Button -->
             <button id="btnQuickWFH" onclick="clockInCurrentWithLocation('WFH')" class="flex-1 px-3 py-2 rounded-xl text-xs font-bold text-sky-800 bg-sky-100 hover:bg-sky-200 border border-sky-300 shadow-xs transition flex items-center justify-center gap-1.5 whitespace-nowrap" title="บันทึกเวลาปฏิบัติงาน WFH ทันที">
               <i data-lucide="home" class="w-3.5 h-3.5 text-sky-600"></i>
-              <span>บันทึก WFH</span>
+              <span>บันทึกเวลา WFH</span>
             </button>
 
             <!-- Check-in / Check-out Dynamic Button -->
@@ -958,13 +954,9 @@
           <span id="modalBtnWFHText">🏠 บันทึกเวลา WFH ทันที</span>
         </button>
 
-        <div class="grid grid-cols-2 gap-2">
-          <button id="modalBtnOffice" onclick="executeClockInByCode('Office')" class="py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs border border-slate-200 transition flex items-center justify-center gap-1.5 cursor-pointer">
-            <i data-lucide="building" class="w-3.5 h-3.5 text-slate-500"></i>
-            <span>🏢 ปฏิบัติงานสำนักงาน</span>
-          </button>
-          <button id="modalBtnCheckOut" onclick="executeClockOutByCode()" class="py-2.5 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-xs border border-rose-200 transition flex items-center justify-center gap-1.5 cursor-pointer">
-            <i data-lucide="log-out" class="w-3.5 h-3.5 text-rose-500"></i>
+        <div>
+          <button id="modalBtnCheckOut" onclick="executeClockOutByCode()" class="w-full py-2.5 px-4 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs sm:text-sm border border-rose-200 transition flex items-center justify-center gap-1.5 cursor-pointer">
+            <i data-lucide="log-out" class="w-4 h-4 text-rose-500"></i>
             <span>🚪 ลงเวลาเลิกงาน</span>
           </button>
         </div>
