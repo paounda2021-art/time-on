@@ -12,9 +12,21 @@ html, body {
     radial-gradient(at 50% 100%, rgba(240, 249, 255, 0.8) 0px, transparent 50%);
   background-attachment: fixed;
   color: #1e293b;
-  overflow-x: hidden;
+  overflow-x: clip;
   max-width: 100vw;
   width: 100%;
+}
+
+.site-header {
+  position: -webkit-sticky !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 50 !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  box-shadow: 0 4px 14px -2px rgba(15, 23, 42, 0.08) !important;
+  border-bottom: 1px solid #e0f2fe !important;
 }
 
 .no-scrollbar::-webkit-scrollbar {
