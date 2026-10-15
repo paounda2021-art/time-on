@@ -380,24 +380,25 @@
             <i data-lucide="building" class="w-4 h-4 text-sky-600 shrink-0"></i>
             <label for="deptSelect" class="text-xs font-bold text-slate-600 shrink-0">ฝ่ายงาน:</label>
             <select id="deptSelect" onchange="filterDept(this.value)" class="dept-select bg-transparent text-xs font-bold text-sky-950 outline-none cursor-pointer">
-              <option value="ALL">🏢 ทั้งหมด (ทุกหน่วยงาน - 94 คน)</option>
+              <option value="ALL">🏢 ทั้งหมด (ทุกหน่วยงาน - 98 คน)</option>
+              <option value="ผู้บริหาร (ระดับ 11, 10)">👑 ผู้บริหาร (ระดับ 11, 10) (2 คน)</option>
               <option value="ฝ่ายตรวจสอบภายใน">🔍 1. ฝ่ายตรวจสอบภายใน (3 คน)</option>
               <option value="สำนักงานเลขานุการผู้อำนวยการ">📝 2. สำนักงานเลขานุการผู้อำนวยการ (7 คน)</option>
               <option value="สำนักงานอำนวยการ">🏛️ 3. สำนักงานอำนวยการ (7 คน)</option>
-              <option value="ฝ่ายบริหารและพัฒนาองค์กร">👥 4. ฝ่ายบริหารและพัฒนาองค์กร (12 คน)</option>
-              <option value="ฝ่ายบัญชีการเงิน">💰 5. ฝ่ายบัญชีการเงิน (13 คน)</option>
+              <option value="ฝ่ายบริหารและพัฒนาองค์กร">👥 4. ฝ่ายบริหารและพัฒนาองค์กร (15 คน)</option>
+              <option value="ฝ่ายบัญชีการเงิน">💰 5. ฝ่ายบัญชีการเงิน (16 คน)</option>
               <option value="ฝ่ายยุทธศาสตร์การพัฒนา">📈 6. ฝ่ายยุทธศาสตร์การพัฒนา (11 คน)</option>
-              <option value="ฝ่ายสินเชื่อ">💳 7. ฝ่ายสินเชื่อ (6 คน)</option>
-              <option value="ฝ่ายส่งเสริมและโครงการพิเศษ">🎯 8. ฝ่ายส่งเสริมและโครงการพิเศษ (8 คน)</option>
-              <option value="ฝ่ายสะพานปลาและท่าเทียบเรือประมง 1">⚓ 9. ฝ่ายสะพานปลาและท่าเทียบเรือประมง 1 (18 คน)</option>
-              <option value="ฝ่ายสะพานปลาและท่าเทียบเรือประมง 2">⚓ 10. ฝ่ายสะพานปลาและท่าเทียบเรือประมง 2 (5 คน)</option>
-              <option value="สำนักงานบริหารหนี้">📑 11. สำนักงานบริหารหนี้ (4 คน)</option>
+              <option value="ฝ่ายสินเชื่อ">💳 7. ฝ่ายสินเชื่อ (1 คน)</option>
+              <option value="ฝ่ายส่งเสริมและโครงการพิเศษ">🎯 8. ฝ่ายส่งเสริมและโครงการพิเศษ (12 คน)</option>
+              <option value="ฝ่ายสะพานปลาและท่าเทียบเรือประมง 1">⚓ 9. ฝ่ายสะพานปลาและท่าเทียบเรือประมง 1 (15 คน)</option>
+              <option value="ฝ่ายสะพานปลาและท่าเทียบเรือประมง 2">⚓ 10. ฝ่ายสะพานปลาและท่าเทียบเรือประมง 2 (3 คน)</option>
+              <option value="สำนักงานบริหารหนี้">📑 11. สำนักงานบริหารหนี้ (6 คน)</option>
             </select>
           </div>
 
           <!-- Quick Reset to All Button (สะดวกเมื่อเลือกฝ่ายงานแล้วอยากกลับมาดูทั้งหมด) -->
           <button id="quickAllBtn" onclick="filterDept('ALL')" class="2xl:hidden px-3 py-2 rounded-xl text-xs font-bold bg-white hover:bg-sky-50 text-slate-700 border border-slate-200 shadow-xs transition flex items-center gap-1.5 shrink-0" title="แสดงทุกฝ่ายงาน">
-            <span>ทั้งหมด (94)</span>
+            <span>ทั้งหมด (98)</span>
           </button>
 
           <!-- Department Pills (แสดงเฉพาะจอขนาดใหญ่พิเศษ 2XL ที่กว้างพอและไม่ล้นจอ) -->
@@ -406,7 +407,8 @@
               <i data-lucide="building" class="w-3.5 h-3.5 text-sky-600"></i>
               <span>ฝ่ายงาน:</span>
             </span>
-            <button data-dept="ALL" onclick="filterDept('ALL')" class="dept-btn active px-3 py-1.5 rounded-xl text-xs font-bold bg-sky-600 text-white shadow-sm transition shrink-0">ทั้งหมด (94 คน)</button>
+            <button data-dept="ALL" onclick="filterDept('ALL')" class="dept-btn active px-3 py-1.5 rounded-xl text-xs font-bold bg-sky-600 text-white shadow-sm transition shrink-0">ทั้งหมด (98 คน)</button>
+            <button data-dept="ผู้บริหาร (ระดับ 11, 10)" onclick="filterDept('ผู้บริหาร (ระดับ 11, 10)')" class="dept-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-sky-50 text-slate-600 border border-slate-200 transition shrink-0">👑 ผู้บริหาร (ระดับ 11, 10) (2)</button>
             <button data-dept="ฝ่ายตรวจสอบภายใน" onclick="filterDept('ฝ่ายตรวจสอบภายใน')" class="dept-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-sky-50 text-slate-600 border border-slate-200 transition shrink-0">1. ฝ่ายตรวจสอบภายใน</button>
             <button data-dept="สำนักงานเลขานุการผู้อำนวยการ" onclick="filterDept('สำนักงานเลขานุการผู้อำนวยการ')" class="dept-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-sky-50 text-slate-600 border border-slate-200 transition shrink-0">2. สำนักงานเลขานุการผู้อำนวยการ</button>
             <button data-dept="สำนักงานอำนวยการ" onclick="filterDept('สำนักงานอำนวยการ')" class="dept-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-sky-50 text-slate-600 border border-slate-200 transition shrink-0">3. สำนักงานอำนวยการ</button>
@@ -882,6 +884,7 @@
           <div>
             <label class="block text-xs font-bold text-slate-700 mb-1">ฝ่าย / สำนัก: <span class="text-rose-500 font-bold">*</span></label>
             <select id="editProfileDepartment" required class="w-full px-3 py-2 text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500">
+              <option value="ผู้บริหาร (ระดับ 11, 10)">👑 ผู้บริหาร (ระดับ 11, 10)</option>
               <option value="ฝ่ายตรวจสอบภายใน">ฝ่ายตรวจสอบภายใน</option>
               <option value="สำนักงานเลขานุการผู้อำนวยการ">สำนักงานเลขานุการผู้อำนวยการ</option>
               <option value="สำนักงานอำนวยการ">สำนักงานอำนวยการ</option>
