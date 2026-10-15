@@ -135,14 +135,21 @@ function initSchema() {
     CREATE INDEX IF NOT EXISTS idx_nudges_toUser ON nudges(toUserId, read);
   `);
 
-  // Ensure pin column exists for Admin 4-digit PIN authentication
+  // Ensure pin, isAdmin, and isHR columns exist safely without touching existing data
   try {
     const cols = db.prepare('PRAGMA table_info(users)').all();
-    if (!cols.some(c => c.name === 'pin')) {
+    const colNames = cols.map(c => c.name);
+    if (!colNames.includes('pin')) {
       db.exec('ALTER TABLE users ADD COLUMN pin TEXT');
     }
+    if (!colNames.includes('isAdmin')) {
+      db.exec('ALTER TABLE users ADD COLUMN isAdmin INTEGER DEFAULT 0');
+    }
+    if (!colNames.includes('isHR')) {
+      db.exec('ALTER TABLE users ADD COLUMN isHR INTEGER DEFAULT 0');
+    }
   } catch (e) {
-    console.warn('Note: pin column verification:', e.message);
+    console.warn('Note: schema column verification:', e.message);
   }
 }
 
