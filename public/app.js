@@ -14,7 +14,7 @@ let clockTickerInterval = null;
 
 // Pagination & Layout State
 let presencePage = 1;
-let presencePageSize = 50; // Default 50 members per page as requested
+let presencePageSize = 18; // Default 18 members per page (fits 3 rows of 6 perfectly)
 let attendancePage = 1;
 let attendancePageSize = 50;
 let layoutMode = 'grid'; // 'grid' | 'compact' | 'list'
@@ -556,7 +556,7 @@ function changePresencePageSize(val) {
   const btnText = document.getElementById('btnViewAllPresenceText');
   if (btnText) {
     if (presencePageSize === 'ALL') {
-      btnText.textContent = 'แสดงแบบ 50 คน / หน้า';
+      btnText.textContent = 'แสดงแบบ 18 คน / หน้า';
     } else {
       btnText.textContent = `ดูทั้งหมด (${users.length} คน)`;
     }
@@ -568,8 +568,8 @@ function changePresencePageSize(val) {
 function toggleViewAllPresence() {
   const sel = document.getElementById('presencePageSizeSelect');
   if (presencePageSize === 'ALL') {
-    presencePageSize = 50;
-    if (sel) sel.value = '50';
+    presencePageSize = 18;
+    if (sel) sel.value = '18';
   } else {
     presencePageSize = 'ALL';
     if (sel) sel.value = 'ALL';
@@ -578,7 +578,7 @@ function toggleViewAllPresence() {
 
   const btnText = document.getElementById('btnViewAllPresenceText');
   if (btnText) {
-    btnText.textContent = presencePageSize === 'ALL' ? 'แสดงแบบ 50 คน / หน้า' : `ดูทั้งหมด (${users.length} คน)`;
+    btnText.textContent = presencePageSize === 'ALL' ? 'แสดงแบบ 18 คน / หน้า' : `ดูทั้งหมด (${users.length} คน)`;
   }
 
   renderTeamGrid();
@@ -1050,12 +1050,18 @@ function renderTeamGrid() {
 
     const att = u.attendance || { status: 'not_checked_in', location: 'WFH' };
     let attBadgeHtml = '';
-    if (att.status === 'checked_in') {
-      attBadgeHtml = `<span class="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">เข้า ${att.checkInTime}</span>`;
-    } else if (att.status === 'checked_out') {
-      attBadgeHtml = `<span class="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">ออก ${att.checkOutTime}</span>`;
+    if (att.status === 'checked_in' && att.checkInTime) {
+      attBadgeHtml = `<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">เข้า ${att.checkInTime}</span>`;
+    } else if (att.status === 'checked_out' && att.checkOutTime) {
+      attBadgeHtml = `<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">ออก ${att.checkOutTime}</span>`;
     } else {
-      attBadgeHtml = `<span class="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">ยังไม่ลง</span>`;
+      attBadgeHtml = `<span class="px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-400 border border-slate-200">ยังไม่ลงเวลา</span>`;
+    }
+
+    // Clean online status: only show pulse badge if actively open, no raw seconds
+    let hbBadgeHtml = '';
+    if (u.status !== 'offline' && hbDiff < 60) {
+      hbBadgeHtml = `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200" title="กำลังใช้งาน"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>ออนไลน์</span>`;
     }
 
     const card = document.createElement('div');
@@ -1085,6 +1091,7 @@ function renderTeamGrid() {
           </span>
           <span class="text-[11px] text-slate-600 hidden md:inline truncate max-w-xs">"${u.note || '-'}"</span>
           ${attBadgeHtml}
+          ${hbBadgeHtml}
           ${!isMe ? `
             <button onclick="openSendNudgeModal('${u.id}', '${u.name}')" class="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-500 text-amber-700 hover:text-white font-bold transition flex items-center gap-1 border border-amber-200 text-xs shadow-2xs cursor-pointer" title="ส่งสัญญาณสะกิด">
               <i data-lucide="bell" class="w-3.5 h-3.5 text-amber-600"></i>
@@ -1137,9 +1144,7 @@ function renderTeamGrid() {
         <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500">
           <div class="flex items-center gap-1">
             ${attBadgeHtml}
-            <span class="px-1 py-0.2 rounded text-[9px] font-mono border ${hbBadgeClass}" title="Heartbeat">
-              ⚡${hbText}
-            </span>
+            ${hbBadgeHtml}
           </div>
 
           <!-- Action: Nudge -->
