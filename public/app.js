@@ -1,4 +1,15 @@
-// TimeOn - WFH Team Status & Attendance Pulse Logic (Light Sky-White Theme + K2D Font + 50/page Pagination)
+// TimeOn - WFH Team Status & Attendance Pulse Logic (v2.1.0)
+const TIMEON_APP_VERSION = '2.1.0';
+console.log(`%c[TimeOn] Active Version: v${TIMEON_APP_VERSION}`, 'color: #0284c7; font-weight: bold; font-size: 13px;');
+
+// Cache safety: verify version and log
+(function verifyAppCache() {
+  const cachedVer = localStorage.getItem('timeon_app_version');
+  if (cachedVer !== TIMEON_APP_VERSION) {
+    console.info(`[TimeOn] New version detected: ${TIMEON_APP_VERSION}. Cache refreshed.`);
+    localStorage.setItem('timeon_app_version', TIMEON_APP_VERSION);
+  }
+})();
 
 let socket = null;
 let users = [];

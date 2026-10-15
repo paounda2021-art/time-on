@@ -15,11 +15,51 @@ const DATA_DIR = path.join(__dirname, 'data');
 const DB_FILE = path.join(DATA_DIR, 'store.json');
 const dbStorage = require('./db.js');
 
+const APP_VERSION = '2.1.0';
+const APP_BUILD = '20261015-v2.1.0';
+
 app.use(cors());
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
-app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
+
+// Anti-Cache Middleware: Force browsers & Cloudflare to always fetch fresh HTML & API responses
+app.use((req, res, next) => {
+  res.setHeader('X-TimeOn-Version', APP_VERSION);
+  if (req.path.endsWith('.html') || req.path === '/' || req.path.startsWith('/api/')) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
+  }
+  next();
+});
+
+// Static assets with strict no-cache on HTML and validation on JS/CSS
+app.use(express.static(path.join(__dirname, 'public'), {
+  etag: false,
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    } else if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
+      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+    }
+  }
+}));
+
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads'), {
+  maxAge: '1h'
+}));
+
+// Version Info REST endpoint
+app.get('/api/version', (req, res) => {
+  res.json({
+    version: APP_VERSION,
+    build: APP_BUILD,
+    serverTime: Date.now()
+  });
+});
 
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });

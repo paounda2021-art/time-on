@@ -21,11 +21,16 @@
   <meta name="twitter:description" content="ระบบลงเวลาปฏิบัติงาน">
   <meta name="twitter:image" content="https://timeon.fishmarket.co.th/assets/logo.jpg">
 
+  <!-- Anti-Cache Directives (ป้องกันเว็บเบราว์เซอร์ค้างแคช) -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  <link rel="stylesheet" href="styles.css?v=20261015_06">
+  <link rel="stylesheet" href="styles.css?v=2.1.0">
 </head>
 <body class="min-h-screen flex flex-col antialiased selection:bg-sky-500 selection:text-white">
 
@@ -36,9 +41,10 @@
       <div class="flex items-center gap-3">
         <img src="/assets/logo.jpg" alt="ตราสัญลักษณ์องค์การสะพานปลา" class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl object-contain bg-white shadow-xs border border-sky-100 p-0.5 shrink-0">
         <div>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 flex-wrap">
             <h1 class="text-base sm:text-xl font-bold tracking-tight text-slate-800">TimeOn</h1>
             <span class="px-2 py-0.5 text-[10px] sm:text-xs font-semibold rounded-full bg-sky-100 text-sky-700 border border-sky-200">WFH Presence</span>
+            <span class="px-2 py-0.5 text-[10px] sm:text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono shadow-2xs">v2.1.0</span>
           </div>
           <p class="text-[11px] sm:text-xs text-slate-500 hidden sm:block">ระบบสถานะพร้อมทำงานและบันทึกเวลาปฏิบัติงาน องค์การสะพานปลา</p>
         </div>
@@ -920,11 +926,17 @@
   <!-- Toast Container -->
   <div id="toastContainer" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
 
-  <!-- Footer -->
-  <footer class="border-t border-sky-100 bg-white/60 py-4 px-6 text-center text-xs text-slate-500 mt-auto">
-    TimeOn • ระบบดูสถานะความพร้อมทำงานและบันทึกเวลาปฏิบัติงาน Work From Home
+  <!-- Footer (With explicit version badge) -->
+  <footer class="border-t border-sky-100 bg-white/70 py-4 px-4 sm:px-8 text-center text-xs text-slate-500 mt-auto">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2.5">
+      <span>TimeOn • ระบบดูสถานะความพร้อมทำงานและบันทึกเวลาปฏิบัติงาน องค์การสะพานปลา</span>
+      <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 text-sky-800 font-mono font-bold text-[11px] border border-sky-200 shadow-2xs">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span>Version 2.1.0 (Live)</span>
+      </span>
+    </div>
   </footer>
 
-  <script src="app.js?v=20261015_05"></script>
+  <script src="app.js?v=2.1.0"></script>
 </body>
 </html>
