@@ -134,6 +134,16 @@ function initSchema() {
     CREATE INDEX IF NOT EXISTS idx_act_timestamp ON activity_logs(timestamp DESC);
     CREATE INDEX IF NOT EXISTS idx_nudges_toUser ON nudges(toUserId, read);
   `);
+
+  // Ensure pin column exists for Admin 4-digit PIN authentication
+  try {
+    const cols = db.prepare('PRAGMA table_info(users)').all();
+    if (!cols.some(c => c.name === 'pin')) {
+      db.exec('ALTER TABLE users ADD COLUMN pin TEXT');
+    }
+  } catch (e) {
+    console.warn('Note: pin column verification:', e.message);
+  }
 }
 
 initSchema();
@@ -159,6 +169,8 @@ function mapUserRow(row) {
     isTabActive: row.isTabActive === 1,
     isAdmin: row.isAdmin === 1,
     isHR: row.isHR === 1,
+    pin: row.pin || null,
+    hasPin: Boolean(row.pin && row.pin.trim()),
     attendance: {
       status: row.attendanceStatus || 'not_checked_in',
       location: row.attendanceLocation || 'WFH',
@@ -190,17 +202,25 @@ function getUserByEmpCode(code) {
   return mapUserRow(row);
 }
 
+const setUserPinStmt = db.prepare('UPDATE users SET pin = ? WHERE id = ?');
+function setUserPin(userId, pin) {
+  setUserPinStmt.run(pin, userId);
+  return getUserById(userId);
+}
+
 const insertOrReplaceUserStmt = db.prepare(`
   INSERT OR REPLACE INTO users (
     id, empCode, name, nickname, role, department, avatar, phone, email,
     status, statusChangedAt, note, breakUntil, lastHeartbeat, isTabActive,
     isAdmin, isHR, attendanceStatus, attendanceLocation, attendanceCheckInTime,
-    attendanceCheckInTimestamp, attendanceCheckOutTime, attendanceCheckOutTimestamp, attendanceNote
+    attendanceCheckInTimestamp, attendanceCheckOutTime, attendanceCheckOutTimestamp, attendanceNote,
+    pin
   ) VALUES (
     @id, @empCode, @name, @nickname, @role, @department, @avatar, @phone, @email,
     @status, @statusChangedAt, @note, @breakUntil, @lastHeartbeat, @isTabActive,
     @isAdmin, @isHR, @attendanceStatus, @attendanceLocation, @attendanceCheckInTime,
-    @attendanceCheckInTimestamp, @attendanceCheckOutTime, @attendanceCheckOutTimestamp, @attendanceNote
+    @attendanceCheckInTimestamp, @attendanceCheckOutTime, @attendanceCheckOutTimestamp, @attendanceNote,
+    @pin
   )
 `);
 
@@ -215,7 +235,10 @@ function saveUser(u) {
     u.avatar = avatarPath;
   }
 
+  const existing = getUserById(u.id);
+  const pinValue = u.pin !== undefined ? u.pin : (existing ? existing.pin : null);
   const att = u.attendance || {};
+
   insertOrReplaceUserStmt.run({
     id: u.id,
     empCode: u.empCode,
@@ -240,7 +263,8 @@ function saveUser(u) {
     attendanceCheckInTimestamp: att.checkInTimestamp || null,
     attendanceCheckOutTime: att.checkOutTime || null,
     attendanceCheckOutTimestamp: att.checkOutTimestamp || null,
-    attendanceNote: att.note || ''
+    attendanceNote: att.note || '',
+    pin: pinValue || null
   });
   return getUserById(u.id);
 }
@@ -417,6 +441,7 @@ module.exports = {
   getUserByEmpCode,
   saveUser,
   deleteUser,
+  setUserPin,
   getAttendanceLogs,
   getAttendanceLogsByDateRange,
   addAttendanceLog,

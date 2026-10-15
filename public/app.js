@@ -467,6 +467,11 @@ function handleServerMessage(msg) {
     renderAll();
     if (currentTab === 'employees') renderEmployeesAdminView();
     showToast(`ลบข้อมูลพนักงาน (${msg.deletedUser?.name || deletedId}) ออกจากระบบแล้ว`, 'warning');
+  } else if (msg.type === 'USER_PIN_UPDATED') {
+    const u = users.find(usr => usr.id === msg.userId);
+    if (u) {
+      u.hasPin = msg.hasPin;
+    }
   }
 }
 
@@ -498,11 +503,27 @@ function setupEventHandlers() {
   const userSelector = document.getElementById('userSelector');
   if (userSelector) {
     userSelector.addEventListener('change', (e) => {
-      currentUserId = e.target.value;
-      localStorage.setItem('timeon_current_user_id', currentUserId);
-      renderAll();
-      sendHeartbeat();
-      showToast(`สลับโปรไฟล์เป็น: ${getCurrentUser()?.name}`);
+      const selectedId = e.target.value;
+      const targetUser = users.find(u => u.id === selectedId);
+      if (!targetUser) return;
+
+      if (isUserPinVerified(targetUser.id)) {
+        currentUserId = targetUser.id;
+        localStorage.setItem('timeon_current_user_id', currentUserId);
+        renderAll();
+        sendHeartbeat();
+        showToast(`สลับโปรไฟล์เป็น: ${getCurrentUser()?.name}`);
+      } else {
+        userSelector.value = currentUserId;
+        requireUserPinVerification(targetUser, () => {
+          currentUserId = targetUser.id;
+          localStorage.setItem('timeon_current_user_id', currentUserId);
+          userSelector.value = currentUserId;
+          renderAll();
+          sendHeartbeat();
+          showToast(`สลับโปรไฟล์เป็น: ${getCurrentUser()?.name}`);
+        });
+      }
     });
   }
 
@@ -2131,6 +2152,9 @@ function openClockInModal(clearInput = false) {
 }
 
 function logoutToClockIn() {
+  if (currentUserId) {
+    sessionStorage.removeItem('timeon_pin_verified_' + currentUserId);
+  }
   localStorage.setItem('timeon_logged_out', 'true');
   localStorage.removeItem('timeon_is_logged_in');
   clearModalEmpCodeInput();
@@ -2256,6 +2280,275 @@ function handleModalEmpCodeInput(val) {
   if (window.lucide) window.lucide.createIcons();
 }
 
+// ==========================================
+// 4-DIGIT PIN AUTHENTICATION SYSTEM (ทุกคน)
+// ==========================================
+
+let pendingPinAction = null;
+
+function isUserPinVerified(userId) {
+  if (!userId) return false;
+  return sessionStorage.getItem('timeon_pin_verified_' + userId) === 'true';
+}
+
+function markUserPinVerified(userId) {
+  if (!userId) return;
+  sessionStorage.setItem('timeon_pin_verified_' + userId, 'true');
+}
+
+function clearUserPinVerification(userId) {
+  if (!userId) return;
+  sessionStorage.removeItem('timeon_pin_verified_' + userId);
+}
+
+function requireUserPinVerification(targetUser, onSuccess) {
+  if (!targetUser) return;
+
+  if (isUserPinVerified(targetUser.id)) {
+    if (typeof onSuccess === 'function') onSuccess();
+    return;
+  }
+
+  // If user does not have a PIN yet, prompt them to set one (enter twice)
+  if (!targetUser.hasPin) {
+    openSetPinModal(targetUser, onSuccess);
+  } else {
+    // If user already has a PIN, prompt to verify
+    openVerifyPinModal(targetUser, onSuccess);
+  }
+}
+
+function openSetPinModal(user, onSuccess) {
+  pendingPinAction = { type: 'set', user, onSuccess };
+
+  const modal = document.getElementById('modalSetPin');
+  if (!modal) return;
+
+  const avatar = document.getElementById('setPinUserAvatar');
+  const name = document.getElementById('setPinUserName');
+  const code = document.getElementById('setPinUserCode');
+  const role = document.getElementById('setPinUserRole');
+  const input1 = document.getElementById('inputSetPin1');
+  const input2 = document.getElementById('inputSetPin2');
+
+  if (avatar) avatar.src = getUserAvatar(user);
+  if (name) name.textContent = `${user.name}${user.nickname ? ' (' + user.nickname + ')' : ''}`;
+  if (code) code.textContent = `รหัส: ${user.empCode || '-'}`;
+  if (role) role.textContent = `${user.role || '-'} • ${user.department || '-'}`;
+
+  if (input1) input1.value = '';
+  if (input2) input2.value = '';
+
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+
+  setTimeout(() => {
+    if (input1) input1.focus();
+  }, 120);
+
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function closeSetPinModal() {
+  const modal = document.getElementById('modalSetPin');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+  pendingPinAction = null;
+}
+
+async function submitSetPin(e) {
+  if (e) e.preventDefault();
+  if (!pendingPinAction || !pendingPinAction.user) {
+    closeSetPinModal();
+    return;
+  }
+
+  const user = pendingPinAction.user;
+  const pin1 = (document.getElementById('inputSetPin1')?.value || '').trim();
+  const pin2 = (document.getElementById('inputSetPin2')?.value || '').trim();
+
+  if (!/^\d{4}$/.test(pin1)) {
+    showToast('รหัส PIN ต้องเป็นตัวเลข 4 หลักเท่านั้น (0-9)', 'warning');
+    document.getElementById('inputSetPin1')?.focus();
+    return;
+  }
+
+  if (pin1 !== pin2) {
+    showToast('รหัส PIN ทั้ง 2 ครั้งไม่ตรงกัน กรุณาตรวจสอบและพิมพ์ใหม่อีกครั้ง', 'warning');
+    const input2 = document.getElementById('inputSetPin2');
+    if (input2) {
+      input2.value = '';
+      input2.focus();
+    }
+    return;
+  }
+
+  const btn = document.getElementById('btnSubmitSetPin');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span>กำลังบันทึก PIN...</span>`;
+  }
+
+  try {
+    const res = await fetch('/api/user/set-pin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: user.id,
+        empCode: user.empCode,
+        pin: pin1
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      showToast(data.error || 'เกิดข้อผิดพลาดในการตั้งรหัส PIN', 'error');
+      return;
+    }
+
+    user.hasPin = true;
+    markUserPinVerified(user.id);
+    closeSetPinModal();
+    showToast(`ตั้งรหัส PIN 4 หลักเรียบร้อยแล้ว ยินดีต้อนรับเข้าสู่ระบบ 🔐`, 'success');
+
+    if (pendingPinAction && typeof pendingPinAction.onSuccess === 'function') {
+      const cb = pendingPinAction.onSuccess;
+      pendingPinAction = null;
+      cb();
+    }
+  } catch (err) {
+    console.error('Error setting PIN:', err);
+    showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i><span>ยืนยันตั้งรหัส PIN</span>`;
+      if (window.lucide) window.lucide.createIcons();
+    }
+  }
+}
+
+function openVerifyPinModal(user, onSuccess) {
+  pendingPinAction = { type: 'verify', user, onSuccess };
+
+  const modal = document.getElementById('modalVerifyPin');
+  if (!modal) return;
+
+  const avatar = document.getElementById('verifyPinUserAvatar');
+  const name = document.getElementById('verifyPinUserName');
+  const code = document.getElementById('verifyPinUserCode');
+  const role = document.getElementById('verifyPinUserRole');
+  const input = document.getElementById('inputVerifyPin');
+  const errEl = document.getElementById('verifyPinErrorMsg');
+
+  if (avatar) avatar.src = getUserAvatar(user);
+  if (name) name.textContent = `${user.name}${user.nickname ? ' (' + user.nickname + ')' : ''}`;
+  if (code) code.textContent = `รหัส: ${user.empCode || '-'}`;
+  if (role) role.textContent = `${user.role || '-'} • ${user.department || '-'}`;
+
+  if (input) input.value = '';
+  if (errEl) {
+    errEl.textContent = '';
+    errEl.classList.add('hidden');
+  }
+
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+
+  setTimeout(() => {
+    if (input) input.focus();
+  }, 120);
+
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function closeVerifyPinModal() {
+  const modal = document.getElementById('modalVerifyPin');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+  pendingPinAction = null;
+}
+
+async function submitVerifyPin(e) {
+  if (e) e.preventDefault();
+  if (!pendingPinAction || !pendingPinAction.user) {
+    closeVerifyPinModal();
+    return;
+  }
+
+  const user = pendingPinAction.user;
+  const pin = (document.getElementById('inputVerifyPin')?.value || '').trim();
+  const errEl = document.getElementById('verifyPinErrorMsg');
+  const input = document.getElementById('inputVerifyPin');
+
+  if (!/^\d{4}$/.test(pin)) {
+    if (errEl) {
+      errEl.textContent = 'กรุณากรอกรหัส PIN ให้ครบ 4 หลัก';
+      errEl.classList.remove('hidden');
+    }
+    showToast('กรุณากรอกรหัส PIN ให้ครบ 4 หลัก', 'warning');
+    if (input) input.focus();
+    return;
+  }
+
+  const btn = document.getElementById('btnSubmitVerifyPin');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span>กำลังตรวจสอบ...</span>`;
+  }
+
+  try {
+    const res = await fetch('/api/user/verify-pin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: user.id,
+        empCode: user.empCode,
+        pin: pin
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      if (errEl) {
+        errEl.textContent = data.error || 'รหัส PIN ไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง';
+        errEl.classList.remove('hidden');
+      }
+      showToast(data.error || 'รหัส PIN ไม่ถูกต้อง ❌', 'error');
+      if (input) {
+        input.value = '';
+        input.focus();
+        input.classList.add('border-rose-500', 'ring-2', 'ring-rose-200');
+        setTimeout(() => input.classList.remove('border-rose-500', 'ring-2', 'ring-rose-200'), 1500);
+      }
+      return;
+    }
+
+    markUserPinVerified(user.id);
+    closeVerifyPinModal();
+    showToast(`ยืนยันรหัส PIN ถูกต้อง ยินดีต้อนรับ ${user.name} ✨`, 'success');
+
+    if (pendingPinAction && typeof pendingPinAction.onSuccess === 'function') {
+      const cb = pendingPinAction.onSuccess;
+      pendingPinAction = null;
+      cb();
+    }
+  } catch (err) {
+    console.error('Error verifying PIN:', err);
+    showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<i data-lucide="lock" class="w-4 h-4"></i><span>เข้าสู่ระบบ</span>`;
+      if (window.lucide) window.lucide.createIcons();
+    }
+  }
+}
+
 function loginAndEnterDashboard() {
   const input = document.getElementById('modalEmpCodeInput');
   const code = (input ? input.value : '').trim();
@@ -2270,10 +2563,10 @@ function loginAndEnterDashboard() {
     );
   }
 
-  // Always close modal first to prevent blocking
-  closeClockInModal();
+  if (!targetUser) return;
 
-  if (targetUser) {
+  requireUserPinVerification(targetUser, () => {
+    closeClockInModal();
     currentUserId = targetUser.id;
     localStorage.removeItem('timeon_logged_out');
     localStorage.setItem('timeon_is_logged_in', 'true');
@@ -2295,7 +2588,7 @@ function loginAndEnterDashboard() {
     setTimeout(() => {
       checkPendingUnreadNudges();
     }, 400);
-  }
+  });
 }
 
 async function executeClockInByCode(location = 'WFH') {
@@ -2317,42 +2610,44 @@ async function executeClockInByCode(location = 'WFH') {
     return;
   }
 
-  try {
-    const res = await fetch('/api/attendance/clock-in-by-code', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        empCode: targetUser.empCode,
-        location: location,
-        note: `ลงเวลาเข้างาน ${location} ด้วยรหัสพนักงาน`
-      })
-    });
-    const data = await res.json();
-    if (data.success) {
-      currentUserId = targetUser.id;
-      localStorage.removeItem('timeon_logged_out');
-      localStorage.setItem('timeon_is_logged_in', 'true');
-      localStorage.setItem('timeon_current_user_id', currentUserId);
-      
-      const userSel = document.getElementById('userSelector');
-      if (userSel) userSel.value = currentUserId;
+  requireUserPinVerification(targetUser, async () => {
+    try {
+      const res = await fetch('/api/attendance/clock-in-by-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          empCode: targetUser.empCode,
+          location: location,
+          note: `ลงเวลาเข้างาน ${location} ด้วยรหัสพนักงาน`
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        currentUserId = targetUser.id;
+        localStorage.removeItem('timeon_logged_out');
+        localStorage.setItem('timeon_is_logged_in', 'true');
+        localStorage.setItem('timeon_current_user_id', currentUserId);
+        
+        const userSel = document.getElementById('userSelector');
+        if (userSel) userSel.value = currentUserId;
 
-      renderAll();
-      renderNudges();
-      sendHeartbeat();
-      playNotificationSound('ping');
-      closeClockInModal();
-      showToast(`🏠 บันทึกเวลาปฏิบัติงาน ${location} ของ ${targetUser.name} สำเร็จ! (${data.timeStr} น.)`, 'success');
-      setTimeout(() => {
-        checkPendingUnreadNudges();
-      }, 400);
-    } else {
-      showToast(data.error || 'เกิดข้อผิดพลาดในการลงเวลา', 'error');
+        renderAll();
+        renderNudges();
+        sendHeartbeat();
+        playNotificationSound('ping');
+        closeClockInModal();
+        showToast(`🏠 บันทึกเวลาปฏิบัติงาน ${location} ของ ${targetUser.name} สำเร็จ! (${data.timeStr} น.)`, 'success');
+        setTimeout(() => {
+          checkPendingUnreadNudges();
+        }, 400);
+      } else {
+        showToast(data.error || 'เกิดข้อผิดพลาดในการลงเวลา', 'error');
+      }
+    } catch (err) {
+      console.error('Error clocking in by code:', err);
+      showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
     }
-  } catch (err) {
-    console.error('Error clocking in by code:', err);
-    showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
-  }
+  });
 }
 
 async function executeClockOutByCode() {
@@ -2374,38 +2669,39 @@ async function executeClockOutByCode() {
     return;
   }
 
-  showConfirmToast(`คุณต้องการลงเวลาเลิกงานให้ ${targetUser.name} ใช่หรือไม่?`, async () => {
-    try {
-      const res = await fetch('/api/attendance/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: targetUser.id,
-          note: 'ลงเวลาเลิกงานด้วยรหัสพนักงาน'
-        })
-      });
-      const data = await res.json();
-      if (data.success) {
-        currentUserId = targetUser.id;
-        localStorage.removeItem('timeon_logged_out');
-        localStorage.setItem('timeon_is_logged_in', 'true');
-        localStorage.setItem('timeon_current_user_id', currentUserId);
-        renderAll();
-        closeClockInModal();
-        playNotificationSound('ping');
-        showToast(`🚪 บันทึกเวลาเลิกงานของ ${targetUser.name} เรียบร้อยแล้ว`, 'success');
-      } else {
-        showToast(data.error || 'เกิดข้อผิดพลาดในการลงเวลา', 'error');
+  requireUserPinVerification(targetUser, () => {
+    showConfirmToast(`คุณต้องการลงเวลาเลิกงานให้ ${targetUser.name} ใช่หรือไม่?`, async () => {
+      try {
+        const res = await fetch('/api/attendance/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: targetUser.id,
+            note: 'ลงเวลาเลิกงานด้วยรหัสพนักงาน'
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          currentUserId = targetUser.id;
+          localStorage.removeItem('timeon_logged_out');
+          localStorage.setItem('timeon_is_logged_in', 'true');
+          localStorage.setItem('timeon_current_user_id', currentUserId);
+          renderAll();
+          closeClockInModal();
+          playNotificationSound('ping');
+          showToast(`🚪 บันทึกเวลาเลิกงานของ ${targetUser.name} เรียบร้อยแล้ว`, 'success');
+        } else {
+          showToast(data.error || 'เกิดข้อผิดพลาดในการลงเวลา', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
       }
-    } catch (err) {
-      console.error(err);
-      showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
-    }
-  }, {
-    confirmText: 'ยืนยันเลิกงาน',
-    cancelText: 'ยกเลิก',
-    isDanger: true,
-    icon: 'log-out'
+    }, {
+      confirmText: 'ยืนยันเลิกงาน',
+      isDanger: true,
+      icon: 'log-out'
+    });
   });
 }
 

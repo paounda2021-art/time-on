@@ -1789,6 +1789,79 @@ app.post('/api/nudges', (req, res) => {
 });
 
 // ============================================================
+// 4-DIGIT PIN AUTHENTICATION (สำหรับทุกคนเพื่อยืนยันตัวตน)
+// ============================================================
+
+// 1. Set 4-Digit PIN (ยืนยัน 2 ครั้ง และบันทึกลง SQLite)
+app.post(['/api/user/set-pin', '/api/admin/set-pin'], (req, res) => {
+  const { userId, empCode, pin } = req.body;
+  const cleanCode = (empCode || '').trim();
+  const user = db.users.find(u => (userId && u.id === userId) || (cleanCode && u.empCode === cleanCode));
+  if (!user) {
+    return res.status(404).json({ success: false, error: 'ไม่พบข้อมูลพนักงาน' });
+  }
+
+  const cleanPin = String(pin || '').trim();
+  if (!/^\d{4}$/.test(cleanPin)) {
+    return res.status(400).json({ success: false, error: 'รหัส PIN ต้องเป็นตัวเลข 4 หลักเท่านั้น (0-9)' });
+  }
+
+  // Save to SQLite
+  dbStorage.setUserPin(user.id, cleanPin);
+  user.pin = cleanPin;
+  user.hasPin = true;
+
+  const now = Date.now();
+  const actLog = {
+    id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    userId: user.id,
+    userName: user.name,
+    type: 'pin_set',
+    fromStatus: user.status,
+    toStatus: user.status,
+    note: `${user.name} ได้ตั้งค่ารหัส PIN 4 หลักเพื่อยืนยันตัวตนเรียบร้อยแล้ว 🔐`,
+    timestamp: now
+  };
+  db.activityLogs.unshift(actLog);
+  if (db.activityLogs.length > 50) db.activityLogs.pop();
+
+  saveDB(user);
+  broadcast({ type: 'USER_PIN_UPDATED', userId: user.id, hasPin: true });
+
+  res.json({
+    success: true,
+    message: `ตั้งค่ารหัส PIN 4 หลักของ ${user.name} เรียบร้อยแล้ว`,
+    user: { id: user.id, name: user.name, empCode: user.empCode, hasPin: true }
+  });
+});
+
+// 2. Verify 4-Digit PIN
+app.post(['/api/user/verify-pin', '/api/admin/verify-pin'], (req, res) => {
+  const { userId, empCode, pin } = req.body;
+  const cleanCode = (empCode || '').trim();
+  const user = db.users.find(u => (userId && u.id === userId) || (cleanCode && u.empCode === cleanCode));
+  if (!user) {
+    return res.status(404).json({ success: false, error: 'ไม่พบข้อมูลพนักงาน' });
+  }
+
+  if (!user.pin) {
+    return res.status(400).json({ success: false, needSetup: true, error: 'ยังไม่ได้ตั้งค่ารหัส PIN 4 หลัก กรุณาตั้ง PIN ก่อนเข้าใช้งาน' });
+  }
+
+  const cleanPin = String(pin || '').trim();
+  if (user.pin !== cleanPin) {
+    return res.status(401).json({ success: false, error: 'รหัส PIN 4 หลักไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง' });
+  }
+
+  res.json({
+    success: true,
+    verified: true,
+    message: 'ยืนยันรหัส PIN ถูกต้อง',
+    user: { id: user.id, name: user.name, empCode: user.empCode, role: user.role, department: user.department, isAdmin: user.isAdmin, isHR: user.isHR }
+  });
+});
+
+// ============================================================
 // ADMIN EMPLOYEE MANAGEMENT API (เพิ่ม / แก้ไข / ลบ พนักงาน)
 // ============================================================
 
