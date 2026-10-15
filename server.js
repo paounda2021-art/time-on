@@ -2040,9 +2040,13 @@ app.get('/api/attendance/export', (req, res) => {
     });
   }
 
-  const rangeLabelThai = (startDate && endDate)
-    ? `${toThaiDateStr(startTs)} ถึง ${toThaiDateStr(endTs)} (พ.ศ.)`
-    : (startDate ? `ตั้งแต่ ${toThaiDateStr(startTs)} (พ.ศ.)` : (endDate ? `จนถึง ${toThaiDateStr(endTs)} (พ.ศ.)` : `ข้อมูลล่าสุด วันที่ ${toThaiDateStr(now)} (พ.ศ.)`));
+  const startDateThai = startDate
+    ? toThaiDateStr(startTs)
+    : (endDate ? toThaiDateStr(endTs) : '-');
+
+  const endDateThai = endDate
+    ? toThaiDateStr(endTs)
+    : (startDate ? toThaiDateStr(startTs) : toThaiDateStr(now));
 
   const fileDateTag = (startDate && endDate)
     ? `${startDate}_to_${endDate}`
@@ -2089,7 +2093,8 @@ app.get('/api/attendance/export', (req, res) => {
 
     return {
       'ลำดับ': idx + 1,
-      'ช่วงวันที่รายงาน': rangeLabelThai,
+      'ตั้งแต่วันที่': startDateThai,
+      'ถึงวันที่': endDateThai,
       'วันที่ปฏิบัติงาน': workDate,
       'รหัสพนักงาน': u.empCode || '-',
       'ชื่อ - สกุล': u.name,
@@ -2114,7 +2119,8 @@ app.get('/api/attendance/export', (req, res) => {
     const dateFormatted = new Date(log.timestamp || now).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
     return {
       'ลำดับ': idx + 1,
-      'ช่วงวันที่รายงาน': rangeLabelThai,
+      'ตั้งแต่วันที่': startDateThai,
+      'ถึงวันที่': endDateThai,
       'วันที่ปฏิบัติงาน': logDate,
       'รหัสบันทึก': log.id,
       'รหัสพนักงาน': u.empCode || '-',
@@ -2152,7 +2158,8 @@ app.get('/api/attendance/export', (req, res) => {
   const wsTimesheet = XLSX.utils.json_to_sheet(timesheetData);
   wsTimesheet['!cols'] = [
     { wch: 8 },  // ลำดับ
-    { wch: 30 }, // ช่วงวันที่รายงาน
+    { wch: 16 }, // ตั้งแต่วันที่
+    { wch: 16 }, // ถึงวันที่
     { wch: 16 }, // วันที่ปฏิบัติงาน
     { wch: 14 }, // รหัสพนักงาน
     { wch: 28 }, // ชื่อ - สกุล
@@ -2175,7 +2182,8 @@ app.get('/api/attendance/export', (req, res) => {
     const wsLogs = XLSX.utils.json_to_sheet(logsData);
     wsLogs['!cols'] = [
       { wch: 8 },  // ลำดับ
-      { wch: 30 }, // ช่วงวันที่รายงาน
+      { wch: 16 }, // ตั้งแต่วันที่
+      { wch: 16 }, // ถึงวันที่
       { wch: 16 }, // วันที่ปฏิบัติงาน
       { wch: 22 }, // รหัสบันทึก
       { wch: 14 }, // รหัสพนักงาน
