@@ -1,5 +1,5 @@
-// TimeOn - WFH Team Status & Attendance Pulse Logic (v2.2.4)
-const TIMEON_APP_VERSION = '2.2.4';
+// TimeOn - WFH Team Status & Attendance Pulse Logic (v2.2.5)
+const TIMEON_APP_VERSION = '2.2.5';
 console.log(`%c[TimeOn] Active Version: v${TIMEON_APP_VERSION}`, 'color: #0284c7; font-weight: bold; font-size: 13px;');
 
 // Cache safety: verify version and log
@@ -2100,6 +2100,68 @@ function showToast(text, type = 'info') {
   }, 4500);
 }
 
+// Rich Toast: WFH System Status Timeout Rules Guide
+function showRichPolicyToast(userName) {
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+
+  const toast = document.createElement('div');
+  toast.className = 'p-4 rounded-2xl shadow-2xl bg-white border border-sky-300 text-slate-800 text-xs pointer-events-auto flex flex-col gap-2 min-w-[310px] max-w-[390px] transform translate-y-2 opacity-0 transition-all duration-300 ring-4 ring-sky-500/15';
+
+  toast.innerHTML = `
+    <div class="flex items-start justify-between gap-2 border-b border-sky-100 pb-2">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0 border border-sky-200">
+          <i data-lucide="shield-check" class="w-4 h-4 text-sky-700"></i>
+        </div>
+        <div>
+          <div class="font-bold text-slate-800 text-xs sm:text-sm">เข้าสู่ระบบสำเร็จ ${userName ? `(${userName})` : ''}</div>
+          <div class="text-[10px] text-sky-600 font-semibold">เงื่อนไขสถานะการปฏิบัติงาน WFH</div>
+        </div>
+      </div>
+      <button type="button" class="btn-close-toast text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer" title="ปิดการแจ้งเตือน">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    </div>
+    <div class="space-y-1.5 pt-0.5 text-[11px] leading-snug">
+      <div class="flex items-start gap-1.5">
+        <span class="font-bold text-amber-700 shrink-0">⏱️ เกิน 5 นาที :</span>
+        <span class="text-slate-600">ไม่มีการเคลื่อนไหวหน้าจอ ➔ เป็น <b class="text-amber-800">ไม่อยู่ที่โต๊ะ (Idle)</b></span>
+      </div>
+      <div class="flex items-start gap-1.5">
+        <span class="font-bold text-slate-500 shrink-0">⚪ เกิน 10 นาที :</span>
+        <span class="text-slate-600">ไม่อยู่ต่อเนื่อง ➔ เป็น <b class="text-slate-700">ออฟไลน์ (Offline)</b></span>
+      </div>
+    </div>
+    <div class="mt-1 pt-1.5 border-t border-slate-100 flex items-center gap-1.5 text-[10.5px] text-emerald-700 font-semibold bg-emerald-50/80 px-2.5 py-1.5 rounded-xl border border-emerald-200">
+      <i data-lucide="sparkles" class="w-3.5 h-3.5 text-emerald-600 shrink-0"></i>
+      <span>เพียงขยับเมาส์หรือเปิดหน้าเว็บ ระบบจะปรับเป็น "พร้อมทำงาน 🟢" ให้ทันที</span>
+    </div>
+  `;
+
+  container.appendChild(toast);
+  if (window.lucide) window.lucide.createIcons();
+
+  requestAnimationFrame(() => {
+    toast.classList.remove('translate-y-2', 'opacity-0');
+  });
+
+  const dismiss = () => {
+    toast.classList.add('opacity-0', 'translate-y-2');
+    setTimeout(() => toast.remove(), 250);
+  };
+
+  const autoDismissTimer = setTimeout(dismiss, 10000);
+
+  const closeBtn = toast.querySelector('.btn-close-toast');
+  if (closeBtn) {
+    closeBtn.onclick = () => {
+      clearTimeout(autoDismissTimer);
+      dismiss();
+    };
+  }
+}
+
 // Confirmation Toast (Interactive Confirm replacing native browser confirm popups)
 function showConfirmToast(message, onConfirm, options = {}) {
   const container = document.getElementById('toastContainer');
@@ -2233,7 +2295,7 @@ function logoutToClockIn() {
   localStorage.removeItem('timeon_is_logged_in');
   clearModalEmpCodeInput();
   openClockInModal(true);
-  showToast('ออกจากระบบเรียบร้อยแล้ว กรุณากรอกรหัสพนักงานเพื่อลงเวลาหรือเข้าใช้งานใหม่', 'info');
+  showToast('ออกจากระบบเรียบร้อยแล้ว (สถานะจะปรับเป็นออฟไลน์ ⚪ เมื่อไม่ได้ใช้งาน)', 'info');
 }
 
 function closeClockInModal() {
@@ -2667,6 +2729,7 @@ function loginAndEnterDashboard() {
     }
 
     showToast(`เข้าสู่ระบบของ ${targetUser.name} เรียบร้อยแล้ว พร้อมอัปเดตสถานะการทำงาน 🟢`, 'success');
+    showRichPolicyToast(targetUser.name);
     setTimeout(() => {
       checkPendingUnreadNudges();
     }, 400);
@@ -2719,6 +2782,7 @@ async function executeClockInByCode(location = 'WFH') {
         playNotificationSound('ping');
         closeClockInModal();
         showToast(`🏠 บันทึกเวลาปฏิบัติงาน ${location} ของ ${targetUser.name} สำเร็จ! (${data.timeStr} น.)`, 'success');
+        showRichPolicyToast(targetUser.name);
         setTimeout(() => {
           checkPendingUnreadNudges();
         }, 400);
